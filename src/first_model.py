@@ -21,3 +21,4 @@ def temp(s,l):
     return value
 print(temp(sw,lw))
 plt.plot(time,temp(sw,lw))
+#is this working
