@@ -176,10 +176,8 @@ def tot_temp_increase(array):
 
 array_temp=yearly_temp_increase(len(time))
 temperature=tot_temp_increase(array_temp)
-plt.figure() 
-ax=plt.subplot()
+plt.plot(year1[78:],temp)
 plt.plot(time,temperature)
-plt.plot(time[len(time)-1],temperature[len(time)-1],'x')
 
 plt.show()
 
