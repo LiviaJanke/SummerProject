@@ -128,24 +128,68 @@ plt.show()
 print(Tt[61]) 
  #  trend is not that bad, could imporve on value of mc, though adding methane rad forcing might make up for the missing temp increase
 #%%
-print(287+temp2[78])
-print(temp2[78])
-print(year1[78])
+#print(287+temp2[78])
+#print(temp2[78])
+#print(year1[78])
+#%% 70% water, considering depths of 70m for well-mixed increases, 1000kgm^-3, heat cap 
+c_water=4180 #Jkg^-1C-1
+av_c_soil=1000 
+depth_water=5
+depth_soil=1.6
+density_water=1000
+density_soil=1300
+mc_water=0.7*surface*depth_water*density_water*c_water
+print(mc_water)
+mc_soil=0.3*surface*depth_soil*density_soil*av_c_soil
+print(mc_soil)
+mc_tot=mc_water+mc_soil
+print(mc_tot)
 #%%
+
+co2=co2_data[:,3]
+time=year1[79:]
+decimal_year=co2_data[:,2]
+years=year1[78:]
+
+#estimates average co2 for each year and appends it to avco2
+#year=1958
+def calc_beta(year):
+    x=0
+    co24year=[]
+    beta=[]
+    avco2=[]
+    for i in decimal_year:
+        integer=math.floor(decimal_year[x])
+        if integer==year:
+            co24year.append(co2[x])
+        else:
+            yearco2=np.array(co24year)
+            mean=np.mean(yearco2)
+            avco2.append(mean)
+            co24year=[]
+            year=year+1
+        x=x+1
+    y=0
+    for i in range(1,63):
+        fract=avco2[y+1]/avco2[y]
+        beta.append(fract)
+        y=y+1
+    return beta
+
+#print(beta)
+#print(len(beta))
+Beta=calc_beta(1958)
 
 Tg=288
 sigma=5.67e-8
 Fg=sigma*Tg**4
 surface=510e12
+T_lw=0.2 #transmittance of the long wavelength of the atmosphere
 #F_tot=[]
 def forcing_CO2(alpha,beta):
     F=alpha*np.log(beta)
     return F
-F_CO2=forcing_CO2(5.3,beta)
-F_N2O=0
-F_methane=0
-F_tot=F_CO2 +F_N2O + F_methane
-T_lw=0.2 #transmittanceo f the long wavelength of the atmosphere
+
 #olr of earth depends on sigma*T^4, so if T increases dT, olr increases by sigma*((T+dT)^4-dT^4)
 ## by taking base temperature as 287K, and thus 1958 temperature as 287K+anomaly
 
@@ -156,7 +200,7 @@ def yearly_temp_increase(number_years):
     excess_planetary_energy=[]
     dOLR=0
     for i in range (0,number_years):
-        dF_CO2=forcing_CO2(5.3,beta[i])
+        dF_CO2=forcing_CO2(5.3,Beta[i])
         dF_N2O=0
         dF_methane=0
         dF_tot=dF_CO2 +dF_N2O +dF_methane
@@ -167,16 +211,17 @@ def yearly_temp_increase(number_years):
         T=T+dT
     return inc_temp
 
-def tot_temp_increase(array):
+def tot_temp_increase(timespan):
+    array=yearly_temp_increase(timespan)
     tot_temp=[]
     for j in range (0,len(time)):
         xo=np.sum(array[0:j])
         tot_temp.append(xo)
     return tot_temp
 
-array_temp=yearly_temp_increase(len(time))
-temperature=tot_temp_increase(array_temp)
-plt.plot(year1[78:],temp)
+#array_temp=yearly_temp_increase(len(time))
+temperature=tot_temp_increase(len(time))
+plt.plot(years,temp)
 plt.plot(time,temperature)
 
 plt.show()
