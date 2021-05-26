@@ -94,7 +94,7 @@ def exp_projection(time: list, conc:list, gas_name: str, int_guess: list):
     plt.ylabel('Concentration in ppm of: {}'.format(gas_name))
     plt.title('Concentration over time of: {}'.format(gas_name), fontsize = 15)
     plt.plot(time, exp_func(time, *params), 'b', linewidth = 3)
-    print("Exponential Projection Implies a CO2 increase in ppm, per year, of =%.3e +/- %.3e"%(np.e**params[1], np.sqrt(pcov[1,1])))
+    print("Exponential Projection Implies a CO2 increase in ppm, per year, by a factor of approx: {}".format(np.e**params[1])) 
     print(params, ' = parameters' , pcov, ' = covariance')
     
 #%%
@@ -131,7 +131,7 @@ exp_projection(co2_time, co2_conc, 'CO2', int_guess = [2.465e-3, 5.99e-3, 1])
 
 
 
-
+print(params[1])
 
 
 
