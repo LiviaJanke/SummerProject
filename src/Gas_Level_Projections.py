@@ -97,6 +97,10 @@ def exp_projection(time: list, conc:list, gas_name: str, int_guess: list):
     print("Exponential Projection Implies a CO2 increase in ppm, per year, by a factor of approx: {}".format(np.e**params[1])) 
     print(params, ' = parameters' , pcov, ' = covariance')
     
+    data = exp_func(x, *params)
+    return data
+                        #returns projected data as an array
+    
 #%%
    #Functions job is to automate the initial guesses 
    #produces set of 2 simultaenous equations with m=1 assumed; m/=1 produces usually unsolvable set 
@@ -117,7 +121,9 @@ exp_int_guess_solver(co2_time, co2_conc)
 #%%
 #try the exponential projection here
 #correspondence is really good
-exp_projection(co2_time, co2_conc, 'CO2', int_guess = [2.465e-3, 5.99e-3, 1])
+
+projected_data = exp_projection(co2_time, co2_conc, 'CO2', int_guess = [2.465e-3, 5.99e-3, 1])
+#print(projected_data)
 
 #%%
 
@@ -131,7 +137,7 @@ exp_projection(co2_time, co2_conc, 'CO2', int_guess = [2.465e-3, 5.99e-3, 1])
 
 
 
-print(params[1])
+
 
 
 
