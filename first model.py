@@ -134,7 +134,7 @@ print(Tt[61])
 #%% 70% water, considering depths of 70m for well-mixed increases, 1000kgm^-3, heat cap 
 c_water=4180 #Jkg^-1C-1
 av_c_soil=1000 
-depth_water=25
+depth_water=70
 depth_soil=1.6
 density_water=1000
 density_soil=1300
@@ -460,7 +460,7 @@ plt.plot(t_gas,ch4)
 plt.title('ch4')
 plt.show()
 
-#%%
+#%% model with eq temp and correct olr
 t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
 years,temp_no,temp=np.loadtxt('Data/graph.txt',skiprows=5,unpack=True)
 decimal_year=t_gas
@@ -485,8 +485,6 @@ def calc_beta(year):
             #year=year+1
         #x=x+1
     y=0
-    print(len(avco2))
-    print(avco2[0])
     for i in range(1,len(time)+1):
         fract=avco2[y+1]/avco2[y]
         beta.append(fract)
@@ -496,7 +494,6 @@ def calc_beta(year):
 #print(beta)
 #print(len(beta))
 Beta=calc_beta(1880)
-print(len(Beta))
 Tg=288
 sigma=5.67e-8
 Fg=sigma*Tg**4
@@ -513,10 +510,11 @@ def forcing_CO2(alpha,beta):
 # according to penas report, the relationship between olr and temp is as follows: A+B*T where A=-339.647 and B=2.218 
 
 def yearly_temp_increase(number_years):
-    T=287
+    T_eq=287
+    T=286.1
     inc_temp=[]
     excess_planetary_energy=[]
-    dOLR=B*(T-0.09)-B*T
+    dOLR=0 #B*(T_eq-0.09)-B*T_eq 
     for i in range (0,number_years):
         dF_CO2=forcing_CO2(5.3,Beta[i])
         dF_N2O=0
@@ -545,9 +543,6 @@ plt.plot(time,temperature)
 plt.show()
 
 print(temperature[len(time)-1])
-
-
-
 
 
 
