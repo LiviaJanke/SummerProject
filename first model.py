@@ -4,7 +4,7 @@ Created on Wed May 19 16:07:22 2021
 
 @author: louis
 """
-
+# https://github.com/LiviaJanke/SummerProject.git
 #%%
 import numpy as np
 import pandas as pd
@@ -23,14 +23,13 @@ plt.show()
 
 #%% plotting temp increase against time
 year1,temp1,temp2=sp.loadtxt('Data/graph.txt',skiprows=5,unpack=True)
-
 plt.plot(year1[78:],temp2[78:])
 print
 #%% setting 1958 as temperature 0 and working out increase in temp from there
-temp=temp2[78:]-temp2[78]
+temper=temp2[78:]-temp2[78]
 time=year1[79:]
-plt.plot(year1[78:],temp)
-print(np.max(temp))
+plt.plot(year1[78:],temper)
+print(np.max(temper))
 print(year1[78:])
 print(len(time))
 #%% calculating beta
@@ -48,7 +47,7 @@ year=1958
 for i in decimal_year:
     integer=math.floor(decimal_year[x])
     if integer==year:
-        co24year.append(co2[x])
+        co24year.append(co2[x])  
     else:
         yearco2=np.array(co24year)
         mean=np.mean(yearco2)
@@ -57,13 +56,14 @@ for i in decimal_year:
         year=year+1
     x=x+1
 y=0
+print(avco2[1])
 for i in range(1,63):
     fract=avco2[y+1]/avco2[y]
     beta.append(fract)
     y=y+1
-print(beta)
+#print(beta)
 
-print(len(beta))
+#print(len(beta))
 
 
 
@@ -128,24 +128,69 @@ plt.show()
 print(Tt[61]) 
  #  trend is not that bad, could imporve on value of mc, though adding methane rad forcing might make up for the missing temp increase
 #%%
-print(287+temp2[78])
-print(temp2[78])
-print(year1[78])
-#%%
+#print(287+temp2[78])
+#print(temp2[78])
+#print(year1[78])
+#%% 70% water, considering depths of 70m for well-mixed increases, 1000kgm^-3, heat cap 
+ 
+depth_water=70
+depth_soil=1.6
+
+def calc_mc_tot(depth_water,depth_soil):
+    c_water=4180 #Jkg^-1C-1
+    av_c_soil=1000
+    density_water=1000
+    density_soil=1300
+    mc_water=0.7*surface*depth_water*density_water*c_water
+    mc_soil=0.3*surface*depth_soil*density_soil*av_c_soil
+    mc_tot=(mc_water+mc_soil)/3.1536e7 #in units of years
+    return mc_tot
+mc_tot=calc_mc_tot(70,1.6)
+#%% increase in temp due to co2 beteen 1958 and 2020
+co2=co2_data[:,3]
+time=year1[79:]
+decimal_year=co2_data[:,2]
+years=year1[78:]
+
+#estimates average co2 for each year and appends it to avco2
+#year=1958
+def calc_beta(year):
+    x=0
+    co24year=[]
+    beta=[]
+    avco2=[]
+    for i in decimal_year:
+        integer=math.floor(decimal_year[x])
+        if integer==year:
+            co24year.append(co2[x])
+        else:
+            yearco2=np.array(co24year)
+            mean=np.mean(yearco2)
+            avco2.append(mean)
+            co24year=[]
+            year=year+1
+        x=x+1
+    y=0
+    for i in range(1,len(time)+1):
+        fract=avco2[y+1]/avco2[y]
+        beta.append(fract)
+        y=y+1
+    return beta
+
+#print(beta)
+#print(len(beta))
+Beta=calc_beta(1958)
 
 Tg=288
 sigma=5.67e-8
 Fg=sigma*Tg**4
 surface=510e12
+T_lw=0.2 #transmittance of the long wavelength of the atmosphere
 #F_tot=[]
 def forcing_CO2(alpha,beta):
     F=alpha*np.log(beta)
     return F
-F_CO2=forcing_CO2(5.3,beta)
-F_N2O=0
-F_methane=0
-F_tot=F_CO2 +F_N2O + F_methane
-T_lw=0.2 #transmittanceo f the long wavelength of the atmosphere
+
 #olr of earth depends on sigma*T^4, so if T increases dT, olr increases by sigma*((T+dT)^4-dT^4)
 ## by taking base temperature as 287K, and thus 1958 temperature as 287K+anomaly
 
@@ -156,7 +201,142 @@ def yearly_temp_increase(number_years):
     excess_planetary_energy=[]
     dOLR=0
     for i in range (0,number_years):
-        dF_CO2=forcing_CO2(5.3,beta[i])
+        dF_CO2=forcing_CO2(5.3,Beta[i])
+        dF_N2O=0
+        dF_methane=0
+        dF_tot=dF_CO2 +dF_N2O +dF_methane
+        excess_planetary_energy=(dF_tot-dOLR)*surface
+        dT=excess_planetary_energy/mc_tot
+        inc_temp.append(dT)
+        dOLR=T_lw*sigma*((T+dT)**4-T**4)
+        T=T+dT
+    return inc_temp
+
+def tot_temp_increase(timespan):
+    array=yearly_temp_increase(timespan)
+    tot_temp=[]
+    for j in range (0,len(time)):
+        xo=np.sum(array[0:j])
+        tot_temp.append(xo)
+    return tot_temp
+
+#array_temp=yearly_temp_increase(len(time))
+temperature=tot_temp_increase(len(time))
+
+plt.plot(years,temper)
+plt.plot(time,temperature)
+
+plt.show()
+
+print(temperature[len(time)-1])
+
+#%%
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.optimize as op
+import sympy as sym
+import csv
+
+#%%  predicting with only co2 if trend continues as it does now, temp increase from 2020 to 2070
+#Section 1: Projecting Greenhouse gas levels
+
+Co2_data = np.loadtxt('monthly_flask_co2_mlo.csv', skiprows = 59, delimiter = ',', unpack = 0)
+
+#importing co2 data from Mauna Loa; relevant columns have index 3 and 9
+#column 9 is seasonally adjusted data
+
+co2_time = Co2_data[0:,3]      #extract columns of 3rd and 9th index
+co2_conc = Co2_data[0:,9]
+
+
+#function's job is to assume gas is on an exponential increase of form Ae^k(t^m), t=time
+#produces all the same outputs as linear projection function
+#requires good initial guesses to work
+#initial guess array looks like int_guess = [A, k, m]
+# {m=1 turns out to be ideal, but for some reason the fit fails if you remove int_guess[2] from exp_func
+#and try to proceed without the m, even though it's pointless}
+
+
+def exp_projection(time: list, conc:list, gas_name: str, int_guess: list):
+    def exp_func(time, *int_guess):
+        return int_guess[0]*np.e**(int_guess[1]*((time-1960)**int_guess[2]))
+    x = np.linspace(2020, 2070, 51)
+    params, pcov = op.curve_fit(exp_func, time, conc, int_guess)  
+    plt.figure(figsize = (10, 7))
+    plt.errorbar(x[::12], exp_func((x[::12]), *params), yerr = 0, fmt = 'y+', mew=2, ms=3, capsize = 2)
+    plt.grid()
+    plt.xlabel('Year')
+    plt.ylabel('Concentration in ppm of: {}'.format(gas_name))
+    plt.title('Concentration over time of: {}'.format(gas_name), fontsize = 15)
+    plt.plot(x, exp_func(x, *params), 'r', linewidth = 2)
+
+    plt.figure(figsize = (10, 7))
+    plt.errorbar(time, conc, yerr = 0, fmt = 'r+', mew=1, ms=2, capsize = 2)
+    plt.grid()
+    plt.xlabel('Year')
+    plt.ylabel('Concentration in ppm of: {}'.format(gas_name))
+    plt.title('Concentration over time of: {}'.format(gas_name), fontsize = 15)
+    plt.plot(time, exp_func(time, *params), 'b', linewidth = 3)
+    #print("Exponential Projection Implies a CO2 increase in ppm, per year, by a factor of approx: {}".format(np.e**params[1])) 
+    #print(params, ' = parameters' , pcov, ' = covariance')
+    projected_data=exp_func(x,*params)
+    return x,projected_data
+
+#print(exp_projection(co2_time, co2_conc, 'CO2', int_guess = [2.465e-3, 5.99e-3, 1]))
+w,z=exp_projection(co2_time, co2_conc, 'CO2', int_guess = [2.465e-3, 5.99e-3, 1])
+
+co2=z
+time=w
+decimal_year=w
+
+def calc_beta(year):
+    x=0
+    co24year=[]
+    beta=[]
+    avco2=z
+    #for i in decimal_year:
+        #integer=math.floor(decimal_year[x])
+        #if integer==year:
+            #co24year.append(co2[x])
+        #else:
+            #yearco2=np.array(co24year)
+            #mean=np.mean(yearco2)
+            #avco2.append(mean)
+            #co24year=[]
+            #year=year+1
+        #x=x+1
+    y=0
+    for i in range(1,len(time)):
+        fract=avco2[y+1]/avco2[y]
+        beta.append(fract)
+        y=y+1
+    return beta
+
+#print(beta)
+#print(len(beta))
+Beta=calc_beta(2020)
+
+Tg=288
+sigma=5.67e-8
+Fg=sigma*Tg**4
+surface=510e12
+T_lw=0.2 #transmittance of the long wavelength of the atmosphere
+#F_tot=[]
+def forcing_CO2(alpha,beta):
+    F=alpha*np.log(beta)
+    return F
+
+#olr of earth depends on sigma*T^4, so if T increases dT, olr increases by sigma*((T+dT)^4-dT^4)
+## by taking base temperature as 287K, and thus 1958 temperature as 287K+anomaly
+
+
+def yearly_temp_increase(number_years):
+    T=288
+    inc_temp=[]
+    excess_planetary_energy=[]
+    dOLR=0
+    for i in range (0,number_years):
+        dF_CO2=forcing_CO2(5.3,Beta[i])
         dF_N2O=0
         dF_methane=0
         dF_tot=dF_CO2 +dF_N2O +dF_methane
@@ -167,23 +347,159 @@ def yearly_temp_increase(number_years):
         T=T+dT
     return inc_temp
 
-def tot_temp_increase(array):
+def tot_temp_increase(timespan):
+    array=yearly_temp_increase(timespan)
     tot_temp=[]
     for j in range (0,len(time)):
         xo=np.sum(array[0:j])
         tot_temp.append(xo)
     return tot_temp
 
-array_temp=yearly_temp_increase(len(time))
-temperature=tot_temp_increase(array_temp)
-plt.plot(year1[78:],temp)
+#array_temp=yearly_temp_increase(len(time))
+temperature=tot_temp_increase(len(time)-1)
+#plt.plot(years,temp)
+plt.plot(time,temperature)
+
+plt.show()
+
+print(temperature[len(time)-1])
+print(len(temperature))
+#print(w[len(time)-1])
+#%%
+
+#%%  temp increase becasue of co2 between 1880 and 2020
+
+
+t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
+years,temp_no,temp=np.loadtxt('Data/graph.txt',skiprows=5,unpack=True)
+decimal_year=t_gas
+time=years[1:]
+#estimates average co2 for each year and appends it to avco2
+#year=1958
+def calc_beta(year):
+    x=0
+    co24year=[]
+    beta=[]
+    avco2=co2
+    y=0
+    print(len(avco2))
+    print(avco2[0])
+    for i in range(1,len(time)+1):
+        fract=avco2[y+1]/avco2[y]
+        beta.append(fract)
+        y=y+1
+    return beta
+
+#print(beta)
+#print(len(beta))
+Beta=calc_beta(1880)
+print(len(Beta))
+Tg=288
+sigma=5.67e-8
+Fg=sigma*Tg**4
+surface=510e12
+T_lw=0.2 #transmittance of the long wavelength of the atmosphere
+#F_tot=[]
+def forcing_CO2(alpha,beta):
+    F=alpha*np.log(beta)
+    return F
+
+#olr of earth depends on sigma*T^4, so if T increases dT, olr increases by sigma*((T+dT)^4-dT^4)
+## by taking base temperature as 287K, and thus 1958 temperature as 287K+anomaly
+
+
+def yearly_temp_increase(number_years):
+    T=286.1
+    inc_temp=[]
+    excess_planetary_energy=[]
+    dOLR=0
+    for i in range (0,number_years):
+        dF_CO2=forcing_CO2(5.3,Beta[i])
+        dF_N2O=0
+        dF_methane=0
+        dF_tot=dF_CO2 +dF_N2O +dF_methane
+        excess_planetary_energy=(dF_tot-dOLR)*surface
+        dT=excess_planetary_energy/mc_tot
+        inc_temp.append(dT)
+        dOLR=T_lw*sigma*((T+dT)**4-T**4)/10
+        T=T+dT
+    return inc_temp
+
+def tot_temp_increase(timespan):
+    array=yearly_temp_increase(timespan)
+    tot_temp=[]
+    for j in range (0,len(time)):
+        xo=np.sum(array[0:j])
+        tot_temp.append(xo)
+    return tot_temp
+
+#array_temp=yearly_temp_increase(len(time))
+temperature=tot_temp_increase(len(time))
+plt.plot(years,temp)
 plt.plot(time,temperature)
 
 plt.show()
 
 print(temperature[len(time)-1])
 
+#%%
+plt.plot(t_gas,n2o)
+plt.title('n2o')
+plt.show()
+plt.plot(t_gas,ch4)
+plt.title('ch4')
+plt.show()
 
+#%% model with eq temp and correct olr
+t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
+years,temp_no,temp=np.loadtxt('Data/graph.txt',skiprows=5,unpack=True)
+decimal_year=t_gas
+time=years[1:]
+
+Beta=calc_beta(1880)
+surface=510e12
+T_lw=0.2 #transmittance of the long wavelength of the atmosphere
+B=2.218 #Wm^-2K^-1 constant for OLR, determined empirically
+
+## by taking base temperature as 287K, and thus 1958 temperature as 287K+anomaly
+# according to penas report, the relationship between olr and temp is as follows: A+B*T where A=-339.647 and B=2.218 
+mc_tot=calc_mc_tot(70, 1.6)
+def yearly_temp_increase(number_years):
+    T_eq=287
+    T=286.1
+    inc_temp=[]
+    excess_planetary_energy=[]
+    dOLR=0 #B*(T_eq-0.09)-B*T_eq 
+    for i in range (0,number_years):
+        dF_CO2=forcing_CO2(5.3,Beta[i])
+        dF_N2O=0
+        dF_methane=0
+        dF_tot=dF_CO2 +dF_N2O +dF_methane
+        excess_planetary_energy=(dF_tot-dOLR)*surface
+        dT=excess_planetary_energy/mc_tot
+        inc_temp.append(dT)
+        dOLR=B*(T+dT)-B*T
+        T=T+dT
+    return inc_temp
+
+def tot_temp_increase(timespan):
+    array=yearly_temp_increase(timespan)
+    tot_temp=[]
+    for j in range (0,len(time)):
+        xo=np.sum(array[0:j])
+        tot_temp.append(xo)
+    return tot_temp
+
+#array_temp=yearly_temp_increase(len(time))
+temperature=tot_temp_increase(len(time))
+plt.plot(years,temp)
+plt.plot(time,temperature)
+
+plt.show()
+
+print(temperature[len(time)-1])
+
+#%%
 
 
 
