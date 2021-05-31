@@ -4,7 +4,7 @@ Created on Wed May 19 16:07:22 2021
 
 @author: louis
 """
-
+# https://github.com/LiviaJanke/SummerProject.git
 #%%
 import numpy as np
 import pandas as pd
@@ -132,18 +132,20 @@ print(Tt[61])
 #print(temp2[78])
 #print(year1[78])
 #%% 70% water, considering depths of 70m for well-mixed increases, 1000kgm^-3, heat cap 
-c_water=4180 #Jkg^-1C-1
-av_c_soil=1000 
+ 
 depth_water=70
 depth_soil=1.6
-density_water=1000
-density_soil=1300
-mc_water=0.7*surface*depth_water*density_water*c_water
-print(mc_water)
-mc_soil=0.3*surface*depth_soil*density_soil*av_c_soil
-print(mc_soil)
-mc_tot=(mc_water+mc_soil)/3e7
-print(mc_tot)
+
+def calc_mc_tot(depth_water,depth_soil):
+    c_water=4180 #Jkg^-1C-1
+    av_c_soil=1000
+    density_water=1000
+    density_soil=1300
+    mc_water=0.7*surface*depth_water*density_water*c_water
+    mc_soil=0.3*surface*depth_soil*density_soil*av_c_soil
+    mc_tot=(mc_water+mc_soil)/3.1536e7 #in units of years
+    return mc_tot
+mc_tot=calc_mc_tot(70,1.6)
 #%% increase in temp due to co2 beteen 1958 and 2020
 co2=co2_data[:,3]
 time=year1[79:]
@@ -508,7 +510,7 @@ def forcing_CO2(alpha,beta):
 #olr of earth depends on sigma*T^4, so if T increases dT, olr increases by sigma*((T+dT)^4-dT^4)
 ## by taking base temperature as 287K, and thus 1958 temperature as 287K+anomaly
 # according to penas report, the relationship between olr and temp is as follows: A+B*T where A=-339.647 and B=2.218 
-
+mc_tot=calc_mc_tot(70, 1.6)
 def yearly_temp_increase(number_years):
     T_eq=287
     T=286.1
