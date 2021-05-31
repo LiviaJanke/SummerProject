@@ -381,18 +381,6 @@ def calc_beta(year):
     co24year=[]
     beta=[]
     avco2=co2
-    #for i in decimal_year:
-        #integer=math.floor(decimal_year[x])
-        #if integer==year:
-            #co24year.append(co2[x])
-            #print(co24year)
-        #else:
-            #yearco2=np.array(co24year)
-            #mean=np.mean(yearco2)
-            #avco2.append(mean)
-            #co24year=[]
-            #year=year+1
-        #x=x+1
     y=0
     print(len(avco2))
     print(avco2[0])
@@ -467,47 +455,12 @@ t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',un
 years,temp_no,temp=np.loadtxt('Data/graph.txt',skiprows=5,unpack=True)
 decimal_year=t_gas
 time=years[1:]
-#estimates average co2 for each year and appends it to avco2
-#year=1958
-def calc_beta(year):
-    x=0
-    co24year=[]
-    beta=[]
-    avco2=co2
-    #for i in decimal_year:
-        #integer=math.floor(decimal_year[x])
-        #if integer==year:
-            #co24year.append(co2[x])
-            #print(co24year)
-        #else:
-            #yearco2=np.array(co24year)
-            #mean=np.mean(yearco2)
-            #avco2.append(mean)
-            #co24year=[]
-            #year=year+1
-        #x=x+1
-    y=0
-    for i in range(1,len(time)+1):
-        fract=avco2[y+1]/avco2[y]
-        beta.append(fract)
-        y=y+1
-    return beta
 
-#print(beta)
-#print(len(beta))
 Beta=calc_beta(1880)
-Tg=288
-sigma=5.67e-8
-Fg=sigma*Tg**4
 surface=510e12
 T_lw=0.2 #transmittance of the long wavelength of the atmosphere
 B=2.218 #Wm^-2K^-1 constant for OLR, determined empirically
-#F_tot=[]
-def forcing_CO2(alpha,beta):
-    F=alpha*np.log(beta)
-    return F
 
-#olr of earth depends on sigma*T^4, so if T increases dT, olr increases by sigma*((T+dT)^4-dT^4)
 ## by taking base temperature as 287K, and thus 1958 temperature as 287K+anomaly
 # according to penas report, the relationship between olr and temp is as follows: A+B*T where A=-339.647 and B=2.218 
 mc_tot=calc_mc_tot(70, 1.6)
