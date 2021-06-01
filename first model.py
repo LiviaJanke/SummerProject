@@ -450,7 +450,7 @@ plt.plot(t_gas,ch4)
 plt.title('ch4')
 plt.show()
 
-#%% model with eq temp and correct olr
+#%% model with eq temp and correct olr but start olr 0
 t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
 years,temp_no,temp=np.loadtxt('Data/graph.txt',skiprows=5,unpack=True)
 decimal_year=t_gas
@@ -539,7 +539,7 @@ plt.show()
 
 print(temperature[len(time)-1])
 
-#%%
+#%% same as above but with start olr -0.09*B
 t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
 years,temp_no,temp=np.loadtxt('Data/graph.txt',skiprows=5,unpack=True)
 decimal_year=t_gas
@@ -589,7 +589,7 @@ def forcing_n2o(meth_data,n2o_data):
         
         dfn2o_list.append(dfn2o)
     return dfn2o_list
-print(forcing_methane(ch4,n2o))
+
 
 ## by taking base temperature as 287K, and thus 1958 temperature as 287K+anomaly
 # according to penas report, the relationship between olr and temp is as follows: A+B*T where A=-339.647 and B=2.218 
