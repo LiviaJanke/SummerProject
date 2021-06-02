@@ -21,13 +21,11 @@ import csv
 #%%
 #Section 1: Projecting Greenhouse gas levels
 
-Co2_data = np.loadtxt('monthly_flask_co2_mlo.csv', skiprows = 59, delimiter = ',', unpack = 0)
+time, n, co2_conc, ch4_conc, n2o_conc = np.loadtxt('cleandata.csv', skiprows = 81, delimiter = ',', unpack = 1)
 
 #importing co2 data from Mauna Loa; relevant columns have index 3 and 9
 #column 9 is seasonally adjusted data
 
-co2_time = Co2_data[0:,3]      #extract columns of 3rd and 9th index
-co2_conc = Co2_data[0:,9]
 
 #%%
 #Function's job is to assume gas is on a linear increase
@@ -59,7 +57,11 @@ def lin_projection(time: list, conc:list, gas_name: str):
     plt.ylabel('Concentration in ppm of: {}'.format(gas_name))
     plt.title('Concentration over time of: {}'.format(gas_name), fontsize = 15)
     plt.plot(time, poly(time))
-    print("Linear Projection Implies a CO2 increase in ppm, per year, of =%.3e +/- %.3e"%(fit[0], np.sqrt(cov[0,0]))) 
+    print("Linear Projection Implies a CO2 increase in ppm, per year, of =%.3e +/- %.3e"%(fit[0], np.sqrt(cov[0,0])))
+    lin_params = [fit[0], fit[1]]
+    return lin_params
+
+#returns parameters of linear fit as array
 #%%
 #test the linear projection here; not great fit
 lin_projection(co2_time, co2_conc, gas_name = 'CO2')
@@ -74,32 +76,35 @@ lin_projection(co2_time, co2_conc, gas_name = 'CO2')
 #and try to proceed without the m, even though it's pointless}
 
 
-def exp_projection(time: list, conc:list, gas_name: str, int_guess: list):
+def exp_projection(time: list, conc:list, gas_name_unit: str, int_guess: list):
+    x = np.linspace(2020, 2070, 1200)
     def exp_func(time, *int_guess):
-        return int_guess[0]*np.e**(int_guess[1]*((time-1960)**int_guess[2]))
-    x = np.linspace(2020, 2070, 600)
+        return int_guess[0]*np.e**(int_guess[1]*((time-1960)**int_guess[2]))                                           #plots twice a month
     params, pcov = op.curve_fit(exp_func, time, conc, int_guess)  
     plt.figure(figsize = (10, 7))
-    plt.errorbar(x[::12], exp_func((x[::12]), *params), yerr = 0, fmt = 'y+', mew=2, ms=3, capsize = 2)
+    plt.errorbar(x[::24], exp_func((x[::24]), *params), yerr = 0, fmt = 'y+', mew=2, ms=3, capsize = 2)
     plt.grid()
     plt.xlabel('Year')
-    plt.ylabel('Concentration in ppm of: {}'.format(gas_name))
-    plt.title('Concentration over time of: {}'.format(gas_name), fontsize = 15)
+    plt.ylabel('Concentration of: {}'.format(gas_name_unit))
+    plt.title('Extrapolated Concentration over time of: {}'.format(gas_name_unit), fontsize = 15)
     plt.plot(x, exp_func(x, *params), 'r', linewidth = 2)
 
     plt.figure(figsize = (10, 7))
-    plt.errorbar(time, conc, yerr = 0, fmt = 'r+', mew=1, ms=2, capsize = 2)
+    plt.errorbar(time, conc, yerr = 0, fmt = 'r+', mew=2, ms=2, capsize = 2)
     plt.grid()
     plt.xlabel('Year')
-    plt.ylabel('Concentration in ppm of: {}'.format(gas_name))
-    plt.title('Concentration over time of: {}'.format(gas_name), fontsize = 15)
+    plt.ylabel('Concentration of: {}'.format(gas_name_unit))
+    plt.title('Concentration over time of: {}'.format(gas_name_unit), fontsize = 15)
     plt.plot(time, exp_func(time, *params), 'b', linewidth = 3)
-    print("Exponential Projection Implies a CO2 increase in ppm, per year, by a factor of approx: {}".format(np.e**params[1])) 
+    print("Exponential Projection Implies an increase, per year, by a factor of approx: {}".format(np.e**params[1])) 
     print(params, ' = parameters' , pcov, ' = covariance')
     
-    data = exp_func(x, *params)
-    return data
+    proj_data = [x, exp_func(x, *params)]
+    data = np.array([time, exp_func(time, *params)])
+    return proj_data, data, params
                         #returns projected data as an array
+                        #returns fit to real data as 2d array
+                        #also returns exponential parameters as array
     
 #%%
    #Functions job is to automate the initial guesses 
@@ -122,27 +127,148 @@ exp_int_guess_solver(co2_time, co2_conc)
 #try the exponential projection here
 #correspondence is really good
 
-projected_data = exp_projection(co2_time, co2_conc, 'CO2', int_guess = [2.465e-3, 5.99e-3, 1])
-#print(projected_data)
+co2_exp_proj, co2_fit_data, co2_params = exp_projection(time, co2_conc, 'CO2 (ppm)', int_guess = [2.465e-3, 5.99e-3, 1])
+
+
+#%%
+#This cell for n20 (nitrous oxide) projections
+    #convert to ppm for consistency
+
+#n2o_lin_proj = lin_projection(time, n2o_conc, 'N2O')
+
+n2o_exp_proj, n2o_fit_data, n2o_params = exp_projection(time, n2o_conc, 'N2O (ppb)', [0, 0.005, 1])
+
+n2o_proj_data = n2o_exp_proj
+
+
+#exponential fit still seems to win
+
+#%%
+#This cell for ch4 (methane) projections
+#ch4 data follows no obvious pattern; might be worth looking into why this is
+#neither fit particularly good
+#exponential fit reduces to approximately linear in future; probably better
+
+
+#ch4_lin_proj = lin_projection(time, ch4_conc, 'CH4')
+
+ch4_exp_proj, ch4_fit_data, ch4_params = exp_projection(time, ch4_conc, 'CH4 (ppb)', [0, 0.005, 1])
+
+print(co2_exp_proj)
+print(ch4_exp_proj)
+print(n2o_exp_proj)
+
+#ch4_proj_data = n2o_exp_proj
+
+#%%
+#This cell for sulphate projections
+#data only goes to 1996 so fit data from 1930 to be consistent with others
+#i.e. projecting based on approx 60 years of data
+#volcanoes make data too spiky
+
+sulph_data = np.loadtxt('sulphates.txt', delimiter = ',', skiprows = 0, unpack = 0)
+
+sulph_time = sulph_data[0:,0]
+sulph_conc = sulph_data[0:,1]    
+
+sulph_lin_proj = lin_projection(sulph_time, sulph_conc, 'Sulphates (ppb)')
+sulph_exp_proj = exp_projection(sulph_time, sulph_conc, 'Sulphates (ppb)', [0.3, 0.0005, 1])
+#%%
+from numpy import diff
+from scipy.optimize import fsolve
+
+def exp(x, a, k, m):
+    return a*np.e**(k*(x-1960)**(m)) 
+
+def target_func(fit_data: list, target_conc: float, target_year: int, gas_params: list, gas_name_unit: str):
+    T = target_conc
+    Y = target_year
+    fit_t = fit_data[0]
+    fit_conc = fit_data[1]
+    C_f = fit_conc[-1]
+    dconc_dt = diff(fit_conc)/diff(fit_t)
+    t = np.linspace(2020, target_year, 12*(target_year-2020))
+    G = dconc_dt[-1]
+    def func(x):
+        A = x[0]
+        B = x[1]
+        C = x[2]
+        D = x[3]
+        return [3*A*Y**2 + 2*B*Y + C,
+                3*A*2020**2 + 2*B*2020+C-G,
+                ((A*Y**3)+(B*Y**2)+(C*Y+D))-T,
+                (A*2020**3+B*2020**2+C*2020+D)-C_f]
+    
+    a, b, c, d = fsolve(func, [1e-6, 1e-6, 1e-6, 1e-6])
+    y_t = a*t**3+b*t**2+c*t+d
+    plt.figure(figsize = (10,7))
+    plt.grid()
+    plt.plot(fit_t, exp(fit_t, *gas_params), 'b', linewidth = 2)
+    plt.plot(t, a*t**3+b*t**2+c*t+d, 'r', linewidth = 2)
+    plt.errorbar(fit_t, fit_conc, yerr = 0, fmt = 'c+', mew=2, ms=2, capsize = 2)
+    plt.errorbar(t[::12], y_t[::12], yerr = 0, fmt = 'y+', mew=2, ms=2, capsize = 2)
+    plt.xlabel('Year')
+    plt.ylabel('Concentration of: {}'.format(gas_name_unit))
+    plt.suptitle('Concentration over time of: {}'.format(gas_name_unit), fontsize = 17, y=1.05)
+    plt.legend(['Past Data fit', 'Future projection given constraints and current trends'], fontsize = 9)
+    plt.title('Constraint: an atmospheric concentration of =%.3e by the year %.3e'%(target_conc, target_year), fontsize = 14, y=1.03)
+    
+    
+    
+    
+#%%
+
+    
+
+co2_targ = target_func(co2_fit_data, 400, 2050, co2_params, 'CO2 (ppm)')
+
+
+        
+        
 
 #%%
 
+time, n, co2_conc, ch4_conc, n2o_conc = np.loadtxt('cleandata.csv', skiprows = 81, delimiter = ',', unpack = 1)
 
 
 
 
+def exp_projection(time: list, conc:list, gas_name_unit: str, int_guess: list):
+    x = np.linspace(2020, 2070, 1200)
+    def exp_func(time, *int_guess):
+        return int_guess[0]*np.e**(int_guess[1]*((time-1960)**int_guess[2]))                                           #plots twice a month
+    params, pcov = op.curve_fit(exp_func, time, conc, int_guess)  
+    plt.figure(figsize = (10, 7))
+    plt.errorbar(x[::24], exp_func((x[::24]), *params), yerr = 0, fmt = 'y+', mew=2, ms=3, capsize = 2)
+    plt.grid()
+    plt.xlabel('Year')
+    plt.ylabel('Concentration of: {}'.format(gas_name_unit))
+    plt.title('Extrapolated Concentration over time of: {}'.format(gas_name_unit), fontsize = 15)
+    plt.plot(x, exp_func(x, *params), 'r', linewidth = 2)
 
+    plt.figure(figsize = (10, 7))
+    plt.errorbar(time, conc, yerr = 0, fmt = 'r+', mew=2, ms=2, capsize = 2)
+    plt.grid()
+    plt.xlabel('Year')
+    plt.ylabel('Concentration of: {}'.format(gas_name_unit))
+    plt.title('Concentration over time of: {}'.format(gas_name_unit), fontsize = 15)
+    plt.plot(time, exp_func(time, *params), 'b', linewidth = 3)
+    print("Exponential Projection Implies an increase, per year, by a factor of approx: {}".format(np.e**params[1])) 
+    print(params, ' = parameters' , pcov, ' = covariance')
+    
+    proj_data = [x, exp_func(x, *params)]
+    data = np.array([time, exp_func(time, *params)])
+    return proj_data, data, params
 
+co2_exp_proj, co2_fit_data, co2_params = exp_projection(time, co2_conc, 'CO2 (ppm)', int_guess = [2.465e-3, 5.99e-3, 1])
 
+n2o_exp_proj, n2o_fit_data, n2o_params = exp_projection(time, n2o_conc, 'N2O (ppb)', [0, 0.005, 1])
 
-
-
-
-
-
-
-
-
+ch4_exp_proj, ch4_fit_data, ch4_params = exp_projection(time, ch4_conc, 'CH4 (ppb)', [0, 0.005, 1])
+#%%
+print(co2_exp_proj)
+print(ch4_exp_proj)
+print(n2o_exp_proj)
 
 
 
