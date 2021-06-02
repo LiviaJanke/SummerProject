@@ -16,7 +16,7 @@ import math
 t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
 years,temp_no,temp=np.loadtxt('Data/graph.txt',skiprows=5,unpack=True)
 time=years[1:]
-
+print(len(time))
 surface=510e12
 T_lw=0.2 #transmittance of the long wavelength of the atmosphere
 B=2.218 #Wm^-2K^-1 constant for OLR, determined empirically
@@ -43,11 +43,10 @@ mc_tot=calc_mc_tot(70,1.6)
 def forcing_CO2(data):
     avco2=data
     dfco2=[]
-    for i in range(0,len(time)):
+    for i in range(0,len(data)-1):
         beta=avco2[i+1]/avco2[0]
         F=alpha_co2*np.log(beta)
         dfco2.append(F)
-    
     return dfco2
 
 
@@ -71,7 +70,7 @@ def forcing_n2o(meth_data,n2o_data):
     for i in range(len(meth_data)-1):
         dfn2o=0
         dfn2o+=(n2o_data[i+1])**0.5-(n2o_data[0]**0.5)
-        dfn2o*=0.12
+        dfn2o*=an2o
         dfn2o-=f(meth_data[0],n2o_data[i+1])-f(meth_data[0],n2o_data[0])
         dfn2o_list.append(dfn2o)
     return dfn2o_list
@@ -91,7 +90,7 @@ def temp_increase(number_years):
     dF_N2O=forcing_n2o(ch4,n2o)
     dF_methane=forcing_methane(ch4,n2o)
     for i in range (0,number_years):
-        dF_tot=+dF_CO2[i]+dF_N2O[i]+dF_methane[i]
+        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i]
         excess_planetary_energy=(dF_tot-dOLR)*surface
         dT=excess_planetary_energy/mc_tot
         anomaly+=dT
@@ -107,11 +106,109 @@ plt.plot(time,temperature)
 plt.show()
 
 print(temperature[len(time)-1])
+print(time[0])
+#%%
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.optimize as op
+import sympy as sym
+import csv
+#%% projection to the future
+time2, n, co2_conc, ch4_conc, n2o_conc = np.loadtxt('Data/cleandata.csv', skiprows = 81, delimiter = ',', unpack = 1)
 
 
 
 
+def exp_projection(time: list, conc:list, gas_name_unit: str, int_guess: list):
+    x = np.linspace(2020, 2070, 51)
+    def exp_func(time2, *int_guess):
+        return int_guess[0]*np.e**(int_guess[1]*((time2-1960)**int_guess[2]))                                           #plots twice a month
+    params, pcov = op.curve_fit(exp_func, time2, conc, int_guess)  
+    plt.figure(figsize = (10, 7))
+    plt.errorbar(x[::24], exp_func((x[::24]), *params), yerr = 0, fmt = 'y+', mew=2, ms=3, capsize = 2)
+    plt.grid()
+    plt.xlabel('Year')
+    plt.ylabel('Concentration of: {}'.format(gas_name_unit))
+    plt.title('Extrapolated Concentration over time of: {}'.format(gas_name_unit), fontsize = 15)
+    plt.plot(x, exp_func(x, *params), 'r', linewidth = 2)
 
+    plt.figure(figsize = (10, 7))
+    plt.errorbar(time2, conc, yerr = 0, fmt = 'r+', mew=2, ms=2, capsize = 2)
+    plt.grid()
+    plt.xlabel('Year')
+    plt.ylabel('Concentration of: {}'.format(gas_name_unit))
+    plt.title('Concentration over time of: {}'.format(gas_name_unit), fontsize = 15)
+    plt.plot(time2, exp_func(time2, *params), 'b', linewidth = 3)
+    print("Exponential Projection Implies an increase, per year, by a factor of approx: {}".format(np.e**params[1])) 
+    print(params, ' = parameters' , pcov, ' = covariance')
+    
+    proj_data = [x, exp_func(x, *params)]
+    data = np.array([time, exp_func(time, *params)])
+    return proj_data, data, params
+
+co2_exp_proj, co2_fit_data, co2_params = exp_projection(time, co2_conc, 'CO2 (ppm)', int_guess = [2.465e-3, 5.99e-3, 1])
+
+n2o_exp_proj, n2o_fit_data, n2o_params = exp_projection(time, n2o_conc, 'N2O (ppb)', [0, 0.005, 1])
+
+ch4_exp_proj, ch4_fit_data, ch4_params = exp_projection(time, ch4_conc, 'CH4 (ppb)', [0, 0.005, 1])
+#%%
+#print(co2_exp_proj)
+#print(ch4_exp_proj)
+#print(n2o_exp_proj[0])
+
+#%%
+t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
+#print(len(co2))
+def temp_increase(number_years,data_co2,data_n2o,data_ch4):
+    equilibrium_temperature=287
+    T=286.1
+    anomaly=-0.09
+    temperature=[]
+    increase_temp=-0.09
+    excess_planetary_energy=[]
+    dOLR=B*anomaly 
+    dF_CO2=forcing_CO2(data_co2)
+    print(len(dF_CO2))
+    dF_N2O=forcing_n2o(data_ch4,data_n2o)
+    print(len(dF_N2O))
+    dF_methane=forcing_methane(data_ch4,data_n2o)
+    print(len(dF_methane))
+    for i in range (0,number_years):
+        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i]
+        excess_planetary_energy=(dF_tot-dOLR)*surface
+        dT=excess_planetary_energy/mc_tot
+        anomaly+=dT
+        dOLR=B*anomaly
+        increase_temp+=dT
+        temperature.append(increase_temp)
+    return temperature
+
+co2_proj=co2_exp_proj[1]
+n2o_proj=n2o_exp_proj[1]
+ch4_proj=ch4_exp_proj[1]
+
+new_co2=np.concatenate((co2,co2_proj[1:]))
+new_n2o=np.concatenate((n2o,n2o_proj[1:]))
+new_ch4=np.concatenate((ch4,ch4_proj[1:]))
+new_time=np.linspace(1881,2070,190)
+#print(len(ch4))
+#print(co2)
+#print(len(co2))
+#print(time3)
+#print(len(time3))
+
+
+temperature_projection=temp_increase(len(new_time),new_co2,new_n2o,new_ch4)
+
+plt.plot(years,temp)
+plt.plot(new_time,temperature_projection)
+
+plt.show()
+print(new_time[139])
+print(new_time[len(new_time)-1])
+print(temperature_projection[len(new_time)-1])
+print(temperature_projection[139])
+print(temperature_projection[len(new_time)-1]-temperature_projection[139])
 
 
 
