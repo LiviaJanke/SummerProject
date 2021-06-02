@@ -643,12 +643,12 @@ alpha_co2=5.35
 ach4=0.036
 an2o=0.12
 
-#Beta=calc_beta(1880)
+
 def forcing_CO2(data):
     avco2=data
     dfco2=[]
     for i in range(0,len(time)):
-        beta=avco2[i+1]/avco2[i]
+        beta=avco2[i+1]/avco2[0]
         F=alpha_co2*np.log(beta)
         dfco2.append(F)
     
@@ -691,7 +691,7 @@ def temp_increase(number_years):
     T=286.1
     anomaly=-0.09
     temperature=[]
-    increase_temp=0
+    increase_temp=-0.09
     excess_planetary_energy=[]
     dOLR=B*anomaly 
     dF_CO2=forcing_CO2(co2)
@@ -707,11 +707,6 @@ def temp_increase(number_years):
         temperature.append(increase_temp)
     return temperature
 
-
-
-
-
-#array_temp=yearly_temp_increase(len(time))
 temperature=temp_increase(len(time))
 plt.plot(years,temp)
 plt.plot(time,temperature)
