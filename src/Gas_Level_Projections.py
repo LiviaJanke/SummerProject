@@ -38,7 +38,7 @@ time, n, co2_conc, ch4_conc, n2o_conc = np.loadtxt('cleandata.csv', skiprows = 8
 #if modelling for different gas, change the 'gas_name' input
 
 
-def lin_projection(time: list, conc:list, gas_name: str):
+def lin_projection(time: list, conc:list, gas_name_unit: str):
     fit, cov = np.polyfit(time, conc, 1, cov = 1)
     poly = np.poly1d(fit)
     x = np.linspace(2020, 2070, 600)                      #600 divisions for 50 years i.e. approx monthly
@@ -60,11 +60,13 @@ def lin_projection(time: list, conc:list, gas_name: str):
     print("Linear Projection Implies a CO2 increase in ppm, per year, of =%.3e +/- %.3e"%(fit[0], np.sqrt(cov[0,0])))
     lin_params = [fit[0], fit[1]]
     return lin_params
+    return(x, poly(x))
 
 #returns parameters of linear fit as array
+#returns projected data as array
 #%%
 #test the linear projection here; not great fit
-lin_projection(co2_time, co2_conc, gas_name = 'CO2')
+lin_projection(time, co2_conc, gas_name = 'CO2')
 
 #%%
 
@@ -72,9 +74,7 @@ lin_projection(co2_time, co2_conc, gas_name = 'CO2')
 #produces all the same outputs as linear projection function
 #requires good initial guesses to work
 #initial guess array looks like int_guess = [A, k, m]
-# {m=1 turns out to be ideal, but for some reason the fit fails if you remove int_guess[2] from exp_func
-#and try to proceed without the m, even though it's pointless}
-
+# note gas_name unit is of form 'CO2 (ppm)' or 'CH4 (ppb)' 
 
 def exp_projection(time: list, conc:list, gas_name_unit: str, int_guess: list):
     x = np.linspace(2020, 2070, 1200)
@@ -173,58 +173,7 @@ sulph_conc = sulph_data[0:,1]
 
 sulph_lin_proj = lin_projection(sulph_time, sulph_conc, 'Sulphates (ppb)')
 sulph_exp_proj = exp_projection(sulph_time, sulph_conc, 'Sulphates (ppb)', [0.3, 0.0005, 1])
-#%%
-from numpy import diff
-from scipy.optimize import fsolve
 
-def exp(x, a, k, m):
-    return a*np.e**(k*(x-1960)**(m)) 
-
-def target_func(fit_data: list, target_conc: float, target_year: int, gas_params: list, gas_name_unit: str):
-    T = target_conc
-    Y = target_year
-    fit_t = fit_data[0]
-    fit_conc = fit_data[1]
-    C_f = fit_conc[-1]
-    dconc_dt = diff(fit_conc)/diff(fit_t)
-    t = np.linspace(2020, target_year, 12*(target_year-2020))
-    G = dconc_dt[-1]
-    def func(x):
-        A = x[0]
-        B = x[1]
-        C = x[2]
-        D = x[3]
-        return [3*A*Y**2 + 2*B*Y + C,
-                3*A*2020**2 + 2*B*2020+C-G,
-                ((A*Y**3)+(B*Y**2)+(C*Y+D))-T,
-                (A*2020**3+B*2020**2+C*2020+D)-C_f]
-    
-    a, b, c, d = fsolve(func, [1e-6, 1e-6, 1e-6, 1e-6])
-    y_t = a*t**3+b*t**2+c*t+d
-    plt.figure(figsize = (10,7))
-    plt.grid()
-    plt.plot(fit_t, exp(fit_t, *gas_params), 'b', linewidth = 2)
-    plt.plot(t, a*t**3+b*t**2+c*t+d, 'r', linewidth = 2)
-    plt.errorbar(fit_t, fit_conc, yerr = 0, fmt = 'c+', mew=2, ms=2, capsize = 2)
-    plt.errorbar(t[::12], y_t[::12], yerr = 0, fmt = 'y+', mew=2, ms=2, capsize = 2)
-    plt.xlabel('Year')
-    plt.ylabel('Concentration of: {}'.format(gas_name_unit))
-    plt.suptitle('Concentration over time of: {}'.format(gas_name_unit), fontsize = 17, y=1.05)
-    plt.legend(['Past Data fit', 'Future projection given constraints and current trends'], fontsize = 9)
-    plt.title('Constraint: an atmospheric concentration of =%.3e by the year %.3e'%(target_conc, target_year), fontsize = 14, y=1.03)
-    
-    
-    
-    
-#%%
-
-    
-
-co2_targ = target_func(co2_fit_data, 400, 2050, co2_params, 'CO2 (ppm)')
-
-
-        
-        
 
 #%%
 
@@ -269,6 +218,73 @@ ch4_exp_proj, ch4_fit_data, ch4_params = exp_projection(time, ch4_conc, 'CH4 (pp
 print(co2_exp_proj)
 print(ch4_exp_proj)
 print(n2o_exp_proj)
+
+#%%
+#Both CFCs have been on a linear decrease since the 90s; projected from then
+
+cfc11_data = np.loadtxt('cfc11_data.csv', skiprows = 115, delimiter = ',', unpack = 0)
+cfc11_conc = cfc11_data[0:len(cfc11_data)-1, 1]
+cfc11_linparams, cfc12_proj_data = lin_projection(np.linspace(1994, 2020, 27), cfc11_conc, 'CFC-11 (ppb)')
+
+cfc12_data = np.loadtxt('cfc12_data.csv', skiprows = 115, delimiter = ',', unpack = 0)
+cfc12_conc = cfc12_data[0:len(cfc12_data)-1, 1]
+cfc12_linparams, cfc12_proj_data = lin_projection(np.linspace(1994, 2020, 27), cfc11_conc, 'CFC-12 (ppb)')
+#%%
+from numpy import diff
+from scipy.optimize import fsolve
+
+#Target function takes in real data, projected data, target concnetration, target year
+#i.e. by when the target concentration should be achieved, the parameters associated 
+#with the exponential projection; works fine with ch4, co2, n2o
+
+
+def exp(x, a, k, m):
+    return a*np.e**(k*(x-1960)**(m)) 
+
+def target_func(real_data:list, fit_data: list, target_conc: float, target_year: int,
+                gas_params: list, gas_name_unit: str):
+    T = target_conc
+    Y = target_year
+    fit_t = fit_data[0]
+    fit_conc = fit_data[1]
+    C_f = fit_conc[-1]
+    dconc_dt = diff(fit_conc)/diff(fit_t)
+    t = np.linspace(2020, target_year, 12*(target_year-2020))
+    G = dconc_dt[-1]
+    def func(x):
+        A = x[0]
+        B = x[1]
+        C = x[2]
+        D = x[3]
+        return [3*A*Y**2 + 2*B*Y + C,
+                3*A*2020**2 + 2*B*2020+C-G,
+                ((A*Y**3)+(B*Y**2)+(C*Y+D))-T,
+                (A*2020**3+B*2020**2+C*2020+D)-C_f]
+    
+    a, b, c, d = fsolve(func, [1e-6, 1e-6, 1e-6, 1e-6])
+    y_t = a*t**3+b*t**2+c*t+d
+    plt.figure(figsize = (10,7))
+    plt.grid()
+    plt.plot(fit_t, exp(fit_t, *gas_params), 'b', linewidth = 3)
+    plt.plot(t, a*t**3+b*t**2+c*t+d, 'r', linewidth = 3)
+    plt.errorbar(time, real_data, yerr = 0, fmt = 'm+', mew=2.5, ms=2.5, capsize = 2.5)
+    plt.xlabel('Year')
+    plt.ylabel('Concentration of: {}'.format(gas_name_unit))
+    plt.suptitle('Concentration over time of: {}'.format(gas_name_unit), fontsize = 18, weight = 'bold', y=1)
+    plt.legend(['Past Data fit', 'Future projection given constraints and current trends'], fontsize = 9)
+    plt.title('Constraint: an atmospheric concentration of {} of {} by the year {}'
+              .format(gas_name_unit, str(target_conc), str(target_year), fontsize = 14, y=1.07))
+    return np.array([t, y_t])
+    
+    
+    
+    
+#%%
+   
+
+co2_targ = target_func(co2_conc, co2_fit_data, 450, 2070, co2_params, 'CO2 (ppm)')
+
+
 
 
 
