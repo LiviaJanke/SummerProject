@@ -12,6 +12,7 @@ years,temp_no,temp=np.loadtxt('Data/graph.txt',skiprows=5,unpack=True)
 sulph_years, sulphates = np.loadtxt('Data/sulphate_annual_medians_from1880_v2.csv', skiprows = 1, delimiter = ',', unpack = True)
 CFC11_years, CFC11 = np.loadtxt('Data/CFC11_1880_to_present.csv', skiprows = 1, delimiter = ',', unpack = True)
 CFC12_years, CFC12 = np.loadtxt('Data/CFC12_1880_to_2021_means.csv', skiprows = 1, delimiter = ',', unpack = True)
+volcanic_years, volcanic_forcing = np.loadtxt('Data/volcanicforcingdata.csv', skiprows = 1, delimiter = ',', unpack = True)
 time=years[1:]
 print(len(time))
 surface=510e12
@@ -145,16 +146,17 @@ def temp_increase_new(number_years):
     dF_sulph = forcing_sulphates(sulphates)
     dF_CFC11 = forcing_CFC11(CFC11)
     dF_CFC12 = forcing_CFC12(CFC12)
+    dF_volcano = volcanic_forcing
     for i in range (0,number_years):
-        dF_tot=+dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_sulph[i] + dF_CFC11[i] + dF_CFC12[i]
-#        dF_tot=+dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]
+#        dF_tot=+dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_sulph[i] + dF_CFC11[i] + dF_CFC12[i]
+        dF_tot=+dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i] + dF_volcano[i]
         excess_planetary_energy=(dF_tot-dOLR)*surface
         dT=excess_planetary_energy/mc_tot
         anomaly+=dT
         dOLR=B*anomaly
         increase_temp+=dT
         temperature.append(increase_temp)
-    return temperature
+    return temperaturee
 
 temperature_old=temp_increase_old(len(time))
 temperature_new=temp_increase_new(len(time))
