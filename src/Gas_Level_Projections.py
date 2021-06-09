@@ -41,32 +41,33 @@ time, n, co2_conc, ch4_conc, n2o_conc = np.loadtxt('cleandata.csv', skiprows = 8
 def lin_projection(time: list, conc:list, gas_name_unit: str):
     fit, cov = np.polyfit(time, conc, 1, cov = 1)
     poly = np.poly1d(fit)
-    x = np.linspace(2020, 2070, 600)                      #600 divisions for 50 years i.e. approx monthly
+    x = np.linspace(2020, 2070, 1200)                      #600 divisions for 50 years i.e. approx monthly
     plt.figure(figsize = (10, 7))
-    plt.errorbar(x[::12], poly(x[::12]) , yerr = 0, fmt = 'c+', mew=2, ms=3, capsize = 2) #marks levels at each year (every 12 months)
+    plt.errorbar(x[::24], poly(x[::24]) , yerr = 0, fmt = 'c+', mew=2, ms=3, capsize = 2) #marks levels at each year (every 12 months)
     plt.grid()
     plt.xlabel('Year')
-    plt.ylabel('Concentration in ppm of: {}'.format(gas_name))
-    plt.title('Extrapolated Concentration over time of: {}'.format(gas_name), fontsize = 15)
+    plt.ylabel('Concentration in ppm of: {}'.format(gas_name_unit))
+    plt.title('Extrapolated Concentration over time of: {}'.format(gas_name_unit), fontsize = 15)
     plt.plot(x, poly(x))
 
     plt.figure(figsize = (10, 7))
     plt.errorbar(time, conc, yerr = 0, fmt = 'r+', mew=2, ms=3, capsize = 2)
     plt.grid()
     plt.xlabel('Year')
-    plt.ylabel('Concentration in ppm of: {}'.format(gas_name))
-    plt.title('Concentration over time of: {}'.format(gas_name), fontsize = 15)
+    plt.ylabel('Concentration in ppm of: {}'.format(gas_name_unit))
+    plt.title('Concentration over time of: {}'.format(gas_name_unit), fontsize = 15)
     plt.plot(time, poly(time))
     print("Linear Projection Implies a CO2 increase in ppm, per year, of =%.3e +/- %.3e"%(fit[0], np.sqrt(cov[0,0])))
     lin_params = [fit[0], fit[1]]
-    return lin_params
-    return(x, poly(x))
+    lin_proj_data = np.array([x, poly(x)])
+    return lin_params, lin_proj_data
+    
 
 #returns parameters of linear fit as array
 #returns projected data as array
 #%%
 #test the linear projection here; not great fit
-lin_projection(time, co2_conc, gas_name = 'CO2')
+lin_projection(time, co2_conc, gas_name_unit = 'CO2')
 
 #%%
 
@@ -196,7 +197,7 @@ def exp_projection(time: list, conc:list, gas_name_unit: str, int_guess: list):
     plt.plot(x, exp_func(x, *params), 'r', linewidth = 2)
 
     plt.figure(figsize = (10, 7))
-    plt.errorbar(time, conc, yerr = 0, fmt = 'r+', mew=2, ms=2, capsize = 2)
+    plt.errorbar(time, conc, yerr = 0, fmt = 'r+', mew=2, ms=2, capsize = 3)
     plt.grid()
     plt.xlabel('Year')
     plt.ylabel('Concentration of: {}'.format(gas_name_unit))
@@ -209,6 +210,7 @@ def exp_projection(time: list, conc:list, gas_name_unit: str, int_guess: list):
     data = np.array([time, exp_func(time, *params)])
     return proj_data, data, params
 
+#%%
 co2_exp_proj, co2_fit_data, co2_params = exp_projection(time, co2_conc, 'CO2 (ppm)', int_guess = [2.465e-3, 5.99e-3, 1])
 
 n2o_exp_proj, n2o_fit_data, n2o_params = exp_projection(time, n2o_conc, 'N2O (ppb)', [0, 0.005, 1])
@@ -224,11 +226,12 @@ print(n2o_exp_proj)
 
 cfc11_data = np.loadtxt('cfc11_data.csv', skiprows = 115, delimiter = ',', unpack = 0)
 cfc11_conc = cfc11_data[0:len(cfc11_data)-1, 1]
-cfc11_linparams, cfc12_proj_data = lin_projection(np.linspace(1994, 2020, 27), cfc11_conc, 'CFC-11 (ppb)')
+cfc11_linparams, cfc11_proj_data = lin_projection(np.linspace(1994, 2020, 27), cfc11_conc, 'CFC-11 (ppb)')
 
-cfc12_data = np.loadtxt('cfc12_data.csv', skiprows = 115, delimiter = ',', unpack = 0)
+cfc12_data = np.loadtxt('cfc12_data.csv', skiprows = 126, delimiter = ',', unpack = 0)
 cfc12_conc = cfc12_data[0:len(cfc12_data)-1, 1]
-cfc12_linparams, cfc12_proj_data = lin_projection(np.linspace(1994, 2020, 27), cfc11_conc, 'CFC-12 (ppb)')
+cfc12_proj_data, cfc12_fit_data, cfc12_params = exp_projection(np.linspace(2002, 2020, 16), cfc12_conc, 'CFC-12 (ppb)',[0.6, -0.0001, 1])
+
 #%%
 from numpy import diff
 from scipy.optimize import fsolve
@@ -282,9 +285,41 @@ def target_func(real_data:list, fit_data: list, target_conc: float, target_year:
 #%%
    
 
-co2_targ = target_func(co2_conc, co2_fit_data, 450, 2070, co2_params, 'CO2 (ppm)')
+co2_targ = target_func(co2_conc, co2_fit_data, 460, 2070, co2_params, 'CO2 (ppm)')
+
+n2o_targ = target_func(n2o_conc, n2o_fit_data, 360, 2070, n2o_params, 'N2O (ppb)')
+
+ch4_targ = target_func(ch4_conc, ch4_fit_data, 2100, 2070, ch4_params, 'CH4 (ppb)')
 
 
+#%%
+#Saving all projections so far into excel file
+
+time_proj = co2_exp_proj[0]
+co2_proj = co2_exp_proj[1]
+ch4_proj = ch4_exp_proj[1]
+n2o_proj = n2o_exp_proj[1]
+cfc11_proj = cfc11_proj_data[1]
+cfc12_proj = cfc12_proj_data[1]
+
+import xlsxwriter
+
+workbook = xlsxwriter.Workbook('Projections.xlsx')
+worksheet = workbook.add_worksheet()
+
+array = [time_proj,
+         co2_proj,
+         ch4_proj,
+         n2o_proj,
+         cfc11_proj,
+         cfc12_proj]
+
+row = 0
+
+for col, data in enumerate(array):
+    worksheet.write_column(row, col, data)
+
+workbook.close()
 
 
 
