@@ -108,22 +108,7 @@ def exp_projection(time: list, conc:list, gas_name_unit: str, int_guess: list):
                         #also returns exponential parameters as array
     
 #%%
-   #Functions job is to automate the initial guesses 
-   #produces set of 2 simultaenous equations with m=1 assumed; m/=1 produces usually unsolvable set 
-   #of 3 equations
-   #found my actual initial guesses (see cell below) by hand
-   
-#READ THIS BIT  --->   #because this function usually causes python to crash for me
-                       #possibly because of how python solves equations of this form?
-    
-def exp_int_guess_solver(time:list, conc:list):
-    A,k = sym.symbols('A,k')
-    eq1 = sym.Eq(A*np.e**(time[0]*k), conc[0])
-    eq2 = sym.Eq(A*np.e**(time[360]*k), conc[360])
-    result = sym.solve([eq1,eq2],(A,k))
-    print(result)
 
-exp_int_guess_solver(co2_time, co2_conc)
 #%%
 #try the exponential projection here
 #correspondence is really good
@@ -285,24 +270,46 @@ def target_func(real_data:list, fit_data: list, target_conc: float, target_year:
 #%%
    
 
-co2_targ = target_func(co2_conc, co2_fit_data, 460, 2070, co2_params, 'CO2 (ppm)')
+co2_targ = target_func(co2_conc, co2_fit_data, 450, 2070, co2_params, 'CO2 (ppm)')
 
 n2o_targ = target_func(n2o_conc, n2o_fit_data, 360, 2070, n2o_params, 'N2O (ppb)')
 
 ch4_targ = target_func(ch4_conc, ch4_fit_data, 2100, 2070, ch4_params, 'CH4 (ppb)')
+#%%
+print(np.shape(co2_targ))
+#%%
+
+time_proj = co2_exp_proj[0]
+
+import xlsxwriter
+
+workbook = xlsxwriter.Workbook('Target Projections.xlsx')
+worksheet = workbook.add_worksheet()
+
+array = [time_proj[::24],
+         co2_targ[1,::12],
+         n2o_targ[1,::12],
+         ch4_targ[1,::12] ]
+
+row = 0
+
+for col, data in enumerate(array):
+    worksheet.write_column(row, col, data)
+
+workbook.close()
+
+
 
 
 #%%
 #Saving all projections so far into excel file
 
-time_proj = co2_exp_proj[0]
 co2_proj = co2_exp_proj[1]
 ch4_proj = ch4_exp_proj[1]
 n2o_proj = n2o_exp_proj[1]
 cfc11_proj = cfc11_proj_data[1]
 cfc12_proj = cfc12_proj_data[1]
 
-import xlsxwriter
 
 workbook = xlsxwriter.Workbook('Projections.xlsx')
 worksheet = workbook.add_worksheet()
