@@ -12,6 +12,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import scipy as sp
 import math
+import seaborn as sns
 #%%
 t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
 years,temp_no,temp=np.loadtxt('Data/graph.txt',skiprows=5,unpack=True)
@@ -159,6 +160,9 @@ ch4_exp_proj, ch4_fit_data, ch4_params = exp_projection(time, ch4_conc, 'CH4 (pp
 #%% projection using only ch4 n2o co2 and current trends
 t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
 #print(len(co2))
+#mc_tot_mean=calc_mc_tot(70,1.6)
+#mc_tot_min=calc_mc_tot(40,1.6)
+#mc_tot_max=calc_mc_tot(100,1.6)
 def temp_increase(number_years,data_co2,data_n2o,data_ch4):
     equilibrium_temperature=287
     T=286.1
@@ -213,18 +217,20 @@ print(temperature_projection[len(new_time)-1]-temperature_projection[139])
 #%% fitting including CFC 
 alpha_CFC11= 0.25
 alpha_CFC12 = 0.32
-CFC11_years, CFC11 = np.loadtxt('Data/CFC11_1880_to_present.csv', skiprows = 1, delimiter = ',', unpack = True)
-CFC12_years, CFC12 = np.loadtxt('Data/CFC12_1880_to_2021_means.csv', skiprows = 1, delimiter = ',', unpack = True)
+CFC11_years, CFC11x = np.loadtxt('Data/CFC11_1880_to_present.csv', skiprows = 1, delimiter = ',', unpack = True)
+CFC12_years, CFC12x = np.loadtxt('Data/CFC12_1880_to_2021_means.csv', skiprows = 1, delimiter = ',', unpack = True)
+CFC11=CFC11x[0:142]
+CFC12=CFC12x[0:142]
 def forcing_CFC11(CFC11_data):
     dfCFC11 =[]
-    for i in range(0,len(CFC11_data)-2): # -2 because don't want 2021 
+    for i in range(0,len(CFC11_data)-1): # -2 because don't want 2021 
         F = alpha_CFC11 *( CFC11_data[i+1]-CFC11_data[0])
         dfCFC11.append(F)
     return dfCFC11
 
 def forcing_CFC12(CFC12_data):
     dfCFC12 =[]
-    for i in range(0,len(CFC12_data)-2):
+    for i in range(0,len(CFC12_data)-1):
         F = alpha_CFC12 * (CFC12_data[i+1]-CFC12_data[0])
         dfCFC12.append(F)
     return dfCFC12
@@ -266,7 +272,7 @@ plt.show()
 print(temperature_new[len(time)-1])
 
 
-#%% fitting with everything
+#%% fitting with everything so volcanoes
 t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
 years,temp_no,temp=np.loadtxt('Data/graph.txt',skiprows=5,unpack=True)
 sulph_years, sulphates = np.loadtxt('Data/sulphate_annual_medians_from1880_v2.csv', skiprows = 1, delimiter = ',', unpack = True)
@@ -275,6 +281,7 @@ CFC12_years, CFC12 = np.loadtxt('Data/CFC12_1880_to_2021_means.csv', skiprows = 
 volcanic_years, volcanic_forcing = np.loadtxt('Data/volcanicforcingdata.csv', skiprows = 1, delimiter = ',', unpack = True)
 
 aerosols=-0.5
+#aerosols=np.linspace(0,-0.5,141,endpoint=True)
 def temp_increase_newest(number_years,data_co2,data_n2o,data_ch4,data_cfc11,data_cfc12,data_volc):
     equilibrium_temperature=287
     T=286.1
@@ -311,7 +318,7 @@ plt.legend()
 
 plt.show()
 
-print(temperature_new[len(time)-1])
+print(temperature_newest[len(time)-1])
 
 
 #%% fitting with cfc 
@@ -381,8 +388,11 @@ plt.show()
 print(target_projection[len(tar_time)-1]-target_projection[139])
 
 #%% Figuring out aerosols
-aero=-0.5
-def temp_increase_corrected(number_years,data_co2,data_n2o,data_ch4,data_cfc11,data_cfc12):
+
+aero=-0.5 #np.linspace(0,-0.5,141,endpoint=True)
+aero_min=-0.26 #np.linspace(0,-0.26,141,endpoint=True)
+aero_max=-0.82 #np.linspace(0,-0.82,141,endpoint=True)
+def temp_increase_corrected(number_years,data_co2,data_n2o,data_ch4,data_cfc11,data_cfc12,aerosols):
     equilibrium_temperature=287
     T=286.1
     anomaly=-0.09
@@ -396,7 +406,7 @@ def temp_increase_corrected(number_years,data_co2,data_n2o,data_ch4,data_cfc11,d
     dF_CFC11 = forcing_CFC11(data_cfc11)
     dF_CFC12 = forcing_CFC12(data_cfc12)
     for i in range (0,number_years):
-        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]+aero
+        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]+aerosols
         excess_planetary_energy=(dF_tot-dOLR)*surface
         dT=excess_planetary_energy/mc_tot
         anomaly+=dT
@@ -405,9 +415,12 @@ def temp_increase_corrected(number_years,data_co2,data_n2o,data_ch4,data_cfc11,d
         temperature.append(increase_temp)
     return temperature
 
-temperature_aero=temp_increase_corrected(len(time),co2,n2o,ch4,CFC11,CFC12)
+temperature_aero=temp_increase_corrected(len(time),co2,n2o,ch4,CFC11,CFC12,aero)
+temp_max_aero=temp_increase_corrected(len(time),co2,n2o,ch4,CFC11,CFC12,aero_min)
+temp_min_aero=temp_increase_corrected(len(time),co2,n2o,ch4,CFC11,CFC12,aero_max)
 temperature_new=temp_increase_new(len(time),co2,n2o,ch4,CFC11,CFC12)
 plt.plot(years,temp)
+plt.fill_between(time,temp_min_aero,temp_max_aero,facecolor='pink')
 plt.xlabel('Years')
 plt.ylabel('Temperature Anomaly')
 plt.plot(time,temperature_aero, color = 'red', label = 'model with aeorosols')
@@ -417,10 +430,17 @@ plt.legend()
 plt.show()
 
 print(temperature_new[len(time)-1])
+print(temperature_aero[len(time)-1])
+array_aero=np.array(temperature_aero)
+array_new=np.array(temperature_new)
 
+#residuals=array_aero-array_new
+#plt.plot(time,residuals)
+#plt.show()
 #%% add volcanoes to aerosols
 #this is done in the cell with volcanoes, just modify the forcing for aerosols
 
+#%%
 
 
 
