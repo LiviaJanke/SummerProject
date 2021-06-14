@@ -441,7 +441,46 @@ array_new=np.array(temperature_new)
 #this is done in the cell with volcanoes, just modify the forcing for aerosols
 
 #%%
+Year,WMGHG,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir,TropAerInd,StratAer=np.loadtxt('Data/instant_forcings_1880_to_2020.csv',skiprows=1,delimiter=',',unpack=True)
 
+def temp_increase_with_all(number_years,data_co2,data_n2o,data_ch4,data_cfc11,data_cfc12,ozone,solar,land_use,snow,orbital,aer_dir,aer_indir,strat_aer):
+    equilibrium_temperature=287
+    T=286.1
+    anomaly=-0.09
+    temperature=[]
+    increase_temp=-0.09
+    excess_planetary_energy=[]
+    dOLR=B*anomaly 
+    dF_CO2=forcing_CO2(data_co2)
+    dF_N2O=forcing_n2o(data_ch4,data_n2o)
+    dF_methane=forcing_methane(data_ch4,data_n2o)
+    dF_CFC11 = forcing_CFC11(data_cfc11)
+    dF_CFC12 = forcing_CFC12(data_cfc12)
+    for i in range (0,number_years):
+        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]+ozone[i]+solar[i]+land_use[i]+snow[i]+orbital[i]+aer_dir[i]+aer_indir[i]+strat_aer[i]
+        excess_planetary_energy=(dF_tot-dOLR)*surface
+        dT=excess_planetary_energy/mc_tot
+        anomaly+=dT
+        dOLR=B*anomaly
+        increase_temp+=dT
+        temperature.append(increase_temp)
+    return temperature
+
+temperature_old=temp_increase(len(time),co2,n2o,ch4)
+temperature_new=temp_increase_with_all(len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir,TropAerInd,StratAer)
+temp_min_all=temp_increase_with_all(len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir+0.5,TropAerInd+0.5,StratAer)
+temp_max_all=temp_increase_with_all(len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir-0.5,TropAerInd-0.5,StratAer)
+plt.fill_between(time,temp_min_all,temp_max_all,facecolor='pink')
+plt.plot(years,temp)
+plt.xlabel('Years')
+plt.ylabel('Temperature Anomaly')
+plt.plot(time,temperature_old, color = 'red', label = 'old model')
+plt.plot(time,temperature_new, color = 'green', label = 'new model')
+plt.legend()
+
+plt.show()
+
+print(temperature_new[len(time)-1])
 
 
 
