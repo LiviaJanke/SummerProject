@@ -156,7 +156,7 @@ def temp_increase_new(number_years):
         dOLR=B*anomaly
         increase_temp+=dT
         temperature.append(increase_temp)
-    return temperaturee
+    return temperature
 
 temperature_old=temp_increase_old(len(time))
 temperature_new=temp_increase_new(len(time))

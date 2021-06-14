@@ -156,7 +156,7 @@ ch4_exp_proj, ch4_fit_data, ch4_params = exp_projection(time, ch4_conc, 'CH4 (pp
 #print(ch4_exp_proj)
 #print(n2o_exp_proj[0])
 
-#%%
+#%% projection using only ch4 n2o co2 and current trends
 t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
 #print(len(co2))
 def temp_increase(number_years,data_co2,data_n2o,data_ch4):
@@ -210,7 +210,7 @@ print(temperature_projection[len(new_time)-1])
 print(temperature_projection[139])
 print(temperature_projection[len(new_time)-1]-temperature_projection[139])
 
-#%% including CFC 
+#%% fitting including CFC 
 alpha_CFC11= 0.25
 alpha_CFC12 = 0.32
 CFC11_years, CFC11 = np.loadtxt('Data/CFC11_1880_to_present.csv', skiprows = 1, delimiter = ',', unpack = True)
@@ -243,7 +243,7 @@ def temp_increase_new(number_years,data_co2,data_n2o,data_ch4,data_cfc11,data_cf
     dF_CFC11 = forcing_CFC11(data_cfc11)
     dF_CFC12 = forcing_CFC12(data_cfc12)
     for i in range (0,number_years):
-        dF_tot=+dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]
+        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]
         excess_planetary_energy=(dF_tot-dOLR)*surface
         dT=excess_planetary_energy/mc_tot
         anomaly+=dT
@@ -266,11 +266,160 @@ plt.show()
 print(temperature_new[len(time)-1])
 
 
+#%% fitting with everything
+t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
+years,temp_no,temp=np.loadtxt('Data/graph.txt',skiprows=5,unpack=True)
+sulph_years, sulphates = np.loadtxt('Data/sulphate_annual_medians_from1880_v2.csv', skiprows = 1, delimiter = ',', unpack = True)
+CFC11_years, CFC11 = np.loadtxt('Data/CFC11_1880_to_present.csv', skiprows = 1, delimiter = ',', unpack = True)
+CFC12_years, CFC12 = np.loadtxt('Data/CFC12_1880_to_2021_means.csv', skiprows = 1, delimiter = ',', unpack = True)
+volcanic_years, volcanic_forcing = np.loadtxt('Data/volcanicforcingdata.csv', skiprows = 1, delimiter = ',', unpack = True)
+
+aerosols=-0.5
+def temp_increase_newest(number_years,data_co2,data_n2o,data_ch4,data_cfc11,data_cfc12,data_volc):
+    equilibrium_temperature=287
+    T=286.1
+    anomaly=-0.09
+    temperature=[]
+    increase_temp=-0.09
+    excess_planetary_energy=[]
+    dOLR=B*anomaly 
+    dF_CO2=forcing_CO2(data_co2)
+    dF_N2O=forcing_n2o(ch4,n2o)
+    dF_methane=forcing_methane(data_ch4,data_n2o)
+    dF_CFC11 = forcing_CFC11(data_cfc11)
+    dF_CFC12 = forcing_CFC12(data_cfc12)
+    dF_volcano = data_volc
+    for i in range (0,number_years):
+#        dF_tot=+dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_sulph[i] + dF_CFC11[i] + dF_CFC12[i]
+        dF_tot=+dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i] + dF_volcano[i]+aerosols
+        excess_planetary_energy=(dF_tot-dOLR)*surface
+        dT=excess_planetary_energy/mc_tot
+        anomaly+=dT
+        dOLR=B*anomaly
+        increase_temp+=dT
+        temperature.append(increase_temp)
+    return temperature
+
+
+temperature_newest=temp_increase_newest(len(time),co2,n2o,ch4,CFC11,CFC12,volcanic_forcing)
+plt.plot(years,temp)
+plt.xlabel('Years')
+plt.ylabel('Temperature Anomaly')
+
+plt.plot(time,temperature_newest, color = 'green', label = 'new model')
+plt.legend()
+
+plt.show()
+
+print(temperature_new[len(time)-1])
+
+
+#%% fitting with cfc 
+def forcing_CFC11(CFC11_data):
+    dfCFC11 =[]
+    for i in range(0,len(CFC11_data)-1): 
+        F = alpha_CFC11 *( CFC11_data[i+1]-CFC11_data[0])
+        dfCFC11.append(F)
+    return dfCFC11
+
+def forcing_CFC12(CFC12_data):
+    dfCFC12 =[]
+    for i in range(0,len(CFC12_data)-1):
+        F = alpha_CFC12 * (CFC12_data[i+1]-CFC12_data[0])
+        dfCFC12.append(F)
+    return dfCFC12
+
+t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
+CFC11_years, CFC11 = np.loadtxt('Data/CFC11_1880_to_present.csv', skiprows = 1, delimiter = ',', unpack = True)
+CFC12_years, CFC12 = np.loadtxt('Data/CFC12_1880_to_2021_means.csv', skiprows = 1, delimiter = ',', unpack = True)
+time_data,co2_proj,n2o_proj,ch4_proj,cfc11_proj,cfc12_proj=np.loadtxt('Projections/All_Projections.csv',skiprows=1,delimiter=',',unpack=True)
+
+timee,cfc11_proj,cfc12_proj=np.loadtxt("Data/cfc_projections.csv",skiprows=1,delimiter=',',unpack=True)
 
 
 
+new_cfc11=np.concatenate((CFC11[0:141],cfc11_proj[1:]))
+new_cfc12=np.concatenate((CFC12[0:141],cfc12_proj[1:]))
+print(len(new_cfc11))
+
+#plt.plot(new_time,new_cfc12[1:],'x')
+#plt.plot(new_time,new_cfc12[1:])
+#plt.plot(new_time,new_cfc11[1:])
+#plt.show()
+temperature_projection=temp_increase_new(len(new_time),new_co2,new_n2o,new_ch4,new_cfc11,new_cfc12)
+
+plt.plot(years,temp)
+plt.plot(new_time,temperature_projection)
+
+plt.show()
+#print(new_time[139])
+#print(new_time[len(new_time)-1])
+#print(temperature_projection[len(new_time)-1])
+#print(temperature_projection[139])
+print(temperature_projection[len(new_time)-1]-temperature_projection[139])
 
 
+#%% target projections
+target_time,target_co2,target_n2o,target_ch4=np.loadtxt('Projections/Target_Projections.csv',skiprows=1,delimiter=',',unpack=True)
+
+
+tar_co2=np.concatenate((co2,target_co2[1:]))
+tar_n2o=np.concatenate((n2o,target_n2o[1:]))
+tar_ch4=np.concatenate((ch4,target_ch4[1:]))
+tar_time=np.linspace(1881,2070,190)
+print(len(tar_co2))
+target_projection=temp_increase(len(tar_time),tar_co2,tar_n2o,tar_ch4)
+
+plt.plot(years,temp)
+plt.plot(tar_time,target_projection)
+
+plt.show()
+#print(new_time[139])
+#print(new_time[len(new_time)-1])
+#print(temperature_projection[len(new_time)-1])
+#print(temperature_projection[139])
+print(target_projection[len(tar_time)-1]-target_projection[139])
+
+#%% Figuring out aerosols
+aero=-0.5
+def temp_increase_corrected(number_years,data_co2,data_n2o,data_ch4,data_cfc11,data_cfc12):
+    equilibrium_temperature=287
+    T=286.1
+    anomaly=-0.09
+    temperature=[]
+    increase_temp=-0.09
+    excess_planetary_energy=[]
+    dOLR=B*anomaly 
+    dF_CO2=forcing_CO2(data_co2)
+    dF_N2O=forcing_n2o(data_ch4,data_n2o)
+    dF_methane=forcing_methane(data_ch4,data_n2o)
+    dF_CFC11 = forcing_CFC11(data_cfc11)
+    dF_CFC12 = forcing_CFC12(data_cfc12)
+    for i in range (0,number_years):
+        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]+aero
+        excess_planetary_energy=(dF_tot-dOLR)*surface
+        dT=excess_planetary_energy/mc_tot
+        anomaly+=dT
+        dOLR=B*anomaly
+        increase_temp+=dT
+        temperature.append(increase_temp)
+    return temperature
+
+temperature_aero=temp_increase_corrected(len(time),co2,n2o,ch4,CFC11,CFC12)
+temperature_new=temp_increase_new(len(time),co2,n2o,ch4,CFC11,CFC12)
+plt.plot(years,temp)
+plt.xlabel('Years')
+plt.ylabel('Temperature Anomaly')
+plt.plot(time,temperature_aero, color = 'red', label = 'model with aeorosols')
+plt.plot(time,temperature_new, color = 'green', label = 'model without aeorsols')
+plt.legend()
+
+plt.show()
+
+print(temperature_new[len(time)-1])
+
+#%% add volcanoes to aerosols
+#this is done in the cell with volcanoes, just modify the forcing for aerosols
 
 
 
