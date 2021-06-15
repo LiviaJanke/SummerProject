@@ -339,7 +339,7 @@ def forcing_CFC12(CFC12_data):
 t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
 CFC11_years, CFC11 = np.loadtxt('Data/CFC11_1880_to_present.csv', skiprows = 1, delimiter = ',', unpack = True)
 CFC12_years, CFC12 = np.loadtxt('Data/CFC12_1880_to_2021_means.csv', skiprows = 1, delimiter = ',', unpack = True)
-time_data,co2_proj,n2o_proj,ch4_proj,cfc11_proj,cfc12_proj=np.loadtxt('Projections/All_Projections.csv',skiprows=1,delimiter=',',unpack=True)
+time_data,co2_proj,n2o_proj,ch4_proj,cfc11_projxx,cfc12_projxx=np.loadtxt('Projections/All_Projections.csv',skiprows=1,delimiter=',',unpack=True)
 
 timee,cfc11_proj,cfc12_proj=np.loadtxt("Data/cfc_projections.csv",skiprows=1,delimiter=',',unpack=True)
 
@@ -465,7 +465,7 @@ def temp_increase_with_all(number_years,data_co2,data_n2o,data_ch4,data_cfc11,da
     dF_CFC11 = forcing_CFC11(data_cfc11)
     dF_CFC12 = forcing_CFC12(data_cfc12)
     for i in range (0,number_years):
-        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]+ozone[i]+solar[i]+land_use[i]+snow[i]+aer_dir[i]+aer_indir[i]+strat_aer[i]+orbital[i]
+        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]+solar[i]+land_use[i]+snow[i]+aer_dir[i]+aer_indir[i]+strat_aer[i]+orbital[i]+ozone[i]
         excess_planetary_energy=(dF_tot-dOLR)*surface
         dT=excess_planetary_energy/mc_tot
         anomaly+=dT
@@ -493,7 +493,7 @@ print(temperature_new[len(time)-1])
 #%%
 #remove orbital?
 #remove solar?
-def temp_increase_final(mc,number_years,data_co2,data_n2o,data_ch4,data_cfc11,data_cfc12,ozone,solar,land_use,snow,orbital,aer_dir,aer_indir,strat_aer):
+def temp_increase_final(mc,number_years,data_co2,data_n2o,data_ch4,data_cfc11,data_cfc12,ozone,solar,land_use,snow,aer_dir,aer_indir,strat_aer):
     anomaly=-0.09
     temperature=[]
     increase_temp=-0.09
@@ -505,7 +505,7 @@ def temp_increase_final(mc,number_years,data_co2,data_n2o,data_ch4,data_cfc11,da
     dF_CFC11 = forcing_CFC11(data_cfc11)
     dF_CFC12 = forcing_CFC12(data_cfc12)
     for i in range (0,number_years):
-        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]+ozone[i+1]+land_use[i+1]+snow[i+1]+aer_dir[i+1]+aer_indir[i+1]+strat_aer[i+1]+solar[i+1]+orbital[i+1]
+        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]+land_use[i+1]+aer_dir[i+1]+aer_indir[i+1]+solar[i+1]+ozone[i+1]+snow[i+1]+strat_aer[i+1]
         excess_planetary_energy=(dF_tot-dOLR)*surface
         dT=excess_planetary_energy/mc
         anomaly+=dT
@@ -516,9 +516,9 @@ def temp_increase_final(mc,number_years,data_co2,data_n2o,data_ch4,data_cfc11,da
 
 mc_min=calc_mc_tot(25,1.6)
 mc_max=calc_mc_tot(125,1.6)
-temperature_final=temp_increase_final(mc_tot,len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir,TropAerInd,StratAer)
-temp_maxi=temp_increase_final(mc_min,len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir,TropAerInd,StratAer)
-temp_mini=temp_increase_final(mc_max,len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir,TropAerInd,StratAer)
+temperature_final=temp_increase_final(mc_tot,len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,TropAerDir,TropAerInd,StratAer)
+temp_maxi=temp_increase_final(mc_min,len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,TropAerDir,TropAerInd,StratAer)
+temp_mini=temp_increase_final(mc_max,len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,TropAerDir,TropAerInd,StratAer)
 
 plt.fill_between(time,temp_maxi,temp_mini,facecolor='pink')
 plt.plot(years,temp)
@@ -532,10 +532,128 @@ print(temperature_final[len(time)-1])
 print(temp_mini[len(time)-1])
 print(temp_maxi[len(time)-1])
 
+#%% 
+co2_exp_proj, co2_fit_data, co2_params = exp_projection(time, co2_conc, 'CO2 (ppm)', int_guess = [2.465e-3, 5.99e-3, 1])
+
+n2o_exp_proj, n2o_fit_data, n2o_params = exp_projection(time, n2o_conc, 'N2O (ppb)', [0, 0.005, 1])
+
+ch4_exp_proj, ch4_fit_data, ch4_params = exp_projection(time, ch4_conc, 'CH4 (ppb)', [0, 0.005, 1])
+
+co2_proj=co2_exp_proj[1]
+n2o_proj=n2o_exp_proj[1]
+ch4_proj=ch4_exp_proj[1]
+#%% projection business as usual
+
+t_gas,tt,co2,ch4,n2o=np.loadtxt('Data/cleandata.csv',skiprows=1,delimiter=',',unpack=True)
+
+CFC11_years, CFC11x = np.loadtxt('Data/CFC11_1880_to_present.csv', skiprows = 1, delimiter = ',', unpack = True)
+CFC12_years, CFC12x = np.loadtxt('Data/CFC12_1880_to_2021_means.csv', skiprows = 1, delimiter = ',', unpack = True)
+timee,cfc11_proj,cfc12_proj=np.loadtxt("Data/cfc_projections.csv",skiprows=1,delimiter=',',unpack=True)
+CFC11=CFC11x[0:141]
+print(len(CFC11))
+CFC12=CFC12x[0:141]
+years_solar,future_solar=np.loadtxt('Projections/future_solar_forcing.csv',skiprows=1,delimiter=',',unpack=True)
+future_years,future_land,future_ozone,future_snow,future_trop_dir,future_trop_indir=np.loadtxt('Projections/Forcing_Projections.csv',delimiter=',',skiprows=2,unpack=True)
+forcing_cstt=-0.5859
+
+array_zeros_strat_aero=np.zeros(50)
+usual_strat_aero=np.concatenate((StratAer,array_zeros_strat_aero))
+
+usual_co2=np.concatenate((co2,co2_proj[1:]))
+usual_n2o=np.concatenate((n2o,n2o_proj[1:]))
+usual_ch4=np.concatenate((ch4,ch4_proj[1:]))
+
+usual_cfc11=np.concatenate((CFC11,cfc11_proj[1:]))
+usual_cfc12=np.concatenate((CFC12,cfc12_proj[1:]))
+
+usual_solar=np.concatenate((Solar,future_solar))
+print(len(usual_solar))
+
+usual_land=np.concatenate((Land_Use,future_land))
+usual_ozone=np.concatenate((Ozone,future_ozone))
+usual_snow=np.concatenate((SnowAlb_BC,future_snow))
+usual_aero_dir=np.concatenate((TropAerDir,future_trop_dir))
+usual_aero_ind=np.concatenate((TropAerInd,future_trop_indir))
+usual_time=np.linspace(1881,2070,190)
+
+temperature_bus_usual=temp_increase_final(mc_tot,len(usual_time),usual_co2,usual_n2o,usual_ch4,usual_cfc11,usual_cfc12,usual_ozone,usual_solar,usual_land,usual_snow,usual_aero_dir,usual_aero_ind,usual_strat_aero)
+temp_bu_max=temp_increase_final(mc_min,len(usual_time),usual_co2,usual_n2o,usual_ch4,usual_cfc11,usual_cfc12,usual_ozone,usual_solar,usual_land,usual_snow,usual_aero_dir,usual_aero_ind,usual_strat_aero)
+temp_bu_min=temp_increase_final(mc_max,len(usual_time),usual_co2,usual_n2o,usual_ch4,usual_cfc11,usual_cfc12,usual_ozone,usual_solar,usual_land,usual_snow,usual_aero_dir,usual_aero_ind,usual_strat_aero)
+plt.fill_between(usual_time,temp_bu_max,temp_bu_min,facecolor='pink')
+plt.plot(years,temp)
+plt.xlabel('Years')
+plt.ylabel('Temperature Anomaly')
+plt.plot(usual_time,temperature_bus_usual, color = 'red', label = 'business as usual projection')
+plt.legend()
+plt.show()
+
+print(temperature_bus_usual[len(usual_time)-1])
+print(temp_bu_min[len(usual_time)-1])
+print(temp_bu_max[len(usual_time)-1])
+
+
+#print(temperature_bus_usual[len(usual_time)-1]-temperature_bus_usual[139])
+#print(temp_bu_min[len(usual_time)-1]-temp_bu_min[139])
+#print(temp_bu_max[len(usual_time)-1]-temp_bu_max[139])
+
+print(temperature_bus_usual[139])
+print(temp_bu_min[139])
+print(temp_bu_max[139])
+#%% projection target 
+
+temperature_target=temp_increase_final(mc_tot,len(usual_time),tar_co2,tar_n2o,tar_ch4,usual_cfc11,usual_cfc12,usual_ozone,usual_solar,usual_land,usual_snow,usual_aero_dir,usual_aero_ind,usual_strat_aero)
+temp_target_max=temp_increase_final(mc_min,len(usual_time),tar_co2,tar_n2o,tar_ch4,usual_cfc11,usual_cfc12,usual_ozone,usual_solar,usual_land,usual_snow,usual_aero_dir,usual_aero_ind,usual_strat_aero)
+temp_target_min=temp_increase_final(mc_max,len(usual_time),tar_co2,tar_n2o,tar_ch4,usual_cfc11,usual_cfc12,usual_ozone,usual_solar,usual_land,usual_snow,usual_aero_dir,usual_aero_ind,usual_strat_aero)
+
+plt.fill_between(usual_time,temp_target_max,temp_target_min,facecolor='pink')
+plt.plot(years,temp)
+plt.xlabel('Years')
+plt.ylabel('Temperature Anomaly')
+plt.plot(usual_time,temperature_target, color = 'red', label = 'business as usual projection')
+plt.legend()
+plt.show()
+
+print(temperature_target[len(usual_time)-1])
+print(temp_target_min[len(usual_time)-1])
+print(temp_target_max[len(usual_time)-1])
+
+
+
+print(temperature_target[139])
+print(temp_target_min[139])
+print(temp_target_max[139])
+
+#%%
+year_strat,rand_strat_aer=np.loadtxt('Projections/StarAer_projection.csv',delimiter=',',skiprows=1,unpack=True)
+proj_strat_aero=np.concatenate((StratAer,rand_strat_aer))
+
+temperature_rand_volc=temp_increase_final(mc_tot,len(usual_time),usual_co2,usual_n2o,usual_ch4,usual_cfc11,usual_cfc12,usual_ozone,usual_solar,usual_land,usual_snow,usual_aero_dir,usual_aero_ind,proj_strat_aero)
+
+plt.plot(years,temp)
+plt.xlabel('Years')
+plt.ylabel('Temperature Anomaly')
+plt.plot(usual_time,temperature_rand_volc, color = 'red', label = 'business as usual projection')
+plt.legend()
+plt.show()
+
+print(temperature_rand_volc[len(usual_time)-1])
+
+
+#print(temperature_bus_usual[len(usual_time)-1]-temperature_bus_usual[139])
+#print(temp_bu_min[len(usual_time)-1]-temp_bu_min[139])
+#print(temp_bu_max[len(usual_time)-1]-temp_bu_max[139])
+
+print(temperature_rand_volc[139])
+
+
+plt.plot(usual_time,proj_strat_aero[1:])
+plt.xlabel('year')
+plt.ylabel('voclanic forcings')
+plt.title('forcing due to volcanic eruptions')
+plt.show()
 
 
 #%%
-plt.plot(time,Solar[1:])
 
 
 
