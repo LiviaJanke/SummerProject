@@ -328,5 +328,9 @@ for col, data in enumerate(array):
 
 workbook.close()
 
+#%%
+time, WMGHG, Ozone,	Solar, Land_Use, SnowAlb_BC, Orbital, TropAerDir, TropAerInd, StratAer = np.loadtxt('instant_forcings_1880_to_2020', skiprows = 81, delimiter = ',', unpack = 1)
+
+
 
 
