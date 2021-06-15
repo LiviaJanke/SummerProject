@@ -223,7 +223,7 @@ CFC11=CFC11x[0:142]
 CFC12=CFC12x[0:142]
 def forcing_CFC11(CFC11_data):
     dfCFC11 =[]
-    for i in range(0,len(CFC11_data)-1): # -2 because don't want 2021 
+    for i in range(0,len(CFC11_data)-1): 
         F = alpha_CFC11 *( CFC11_data[i+1]-CFC11_data[0])
         dfCFC11.append(F)
     return dfCFC11
@@ -321,7 +321,7 @@ plt.show()
 print(temperature_newest[len(time)-1])
 
 
-#%% fitting with cfc 
+#%% projecting with cfc 
 def forcing_CFC11(CFC11_data):
     dfCFC11 =[]
     for i in range(0,len(CFC11_data)-1): 
@@ -345,8 +345,8 @@ timee,cfc11_proj,cfc12_proj=np.loadtxt("Data/cfc_projections.csv",skiprows=1,del
 
 
 
-new_cfc11=np.concatenate((CFC11[0:141],cfc11_proj[1:]))
-new_cfc12=np.concatenate((CFC12[0:141],cfc12_proj[1:]))
+new_cfc11=np.concatenate((CFC11,cfc11_proj[1:]))
+new_cfc12=np.concatenate((CFC12,cfc12_proj[1:]))
 print(len(new_cfc11))
 
 #plt.plot(new_time,new_cfc12[1:],'x')
@@ -440,6 +440,14 @@ array_new=np.array(temperature_new)
 #%% add volcanoes to aerosols
 #this is done in the cell with volcanoes, just modify the forcing for aerosols
 
+#%% calculating the error in aerosols from standard deviation of all forcings given in IPCC report
+ipcc_aero_forcing=np.array([-0.44,-0.29,-0.32,-0.26,-0.35,-0.28,-0.32,-0.41,-0.36,-0.68,-0.66,-0.29,-0.43,-0.38,-0.28,-0.56,-0.63,-0.82,-0.81])
+std_aero_forcings=np.std(ipcc_aero_forcing,ddof=1)
+print(std_aero_forcings)
+#95% of data lies within 2 standard devs, so if we choose error to be 2std, we can be confident our value
+err_dir_aero=2*std_aero_forcings
+
+ipcc_indir_aero=np.array([])
 #%%
 Year,WMGHG,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir,TropAerInd,StratAer=np.loadtxt('Data/instant_forcings_1880_to_2020.csv',skiprows=1,delimiter=',',unpack=True)
 
@@ -457,7 +465,7 @@ def temp_increase_with_all(number_years,data_co2,data_n2o,data_ch4,data_cfc11,da
     dF_CFC11 = forcing_CFC11(data_cfc11)
     dF_CFC12 = forcing_CFC12(data_cfc12)
     for i in range (0,number_years):
-        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]+ozone[i]+solar[i]+land_use[i]+snow[i]+orbital[i]+aer_dir[i]+aer_indir[i]+strat_aer[i]
+        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]+ozone[i]+solar[i]+land_use[i]+snow[i]+aer_dir[i]+aer_indir[i]+strat_aer[i]+orbital[i]
         excess_planetary_energy=(dF_tot-dOLR)*surface
         dT=excess_planetary_energy/mc_tot
         anomaly+=dT
@@ -468,8 +476,8 @@ def temp_increase_with_all(number_years,data_co2,data_n2o,data_ch4,data_cfc11,da
 
 temperature_old=temp_increase(len(time),co2,n2o,ch4)
 temperature_new=temp_increase_with_all(len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir,TropAerInd,StratAer)
-temp_min_all=temp_increase_with_all(len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir+0.5,TropAerInd+0.5,StratAer)
-temp_max_all=temp_increase_with_all(len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir-0.5,TropAerInd-0.5,StratAer)
+temp_min_all=temp_increase_with_all(len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir+err_dir_aero,TropAerInd+0.5,StratAer)
+temp_max_all=temp_increase_with_all(len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir-err_dir_aero,TropAerInd-0.5,StratAer)
 plt.fill_between(time,temp_min_all,temp_max_all,facecolor='pink')
 plt.plot(years,temp)
 plt.xlabel('Years')
@@ -481,6 +489,62 @@ plt.legend()
 plt.show()
 
 print(temperature_new[len(time)-1])
+
+#%%
+#remove orbital?
+#remove solar?
+def temp_increase_final(mc,number_years,data_co2,data_n2o,data_ch4,data_cfc11,data_cfc12,ozone,solar,land_use,snow,orbital,aer_dir,aer_indir,strat_aer):
+    anomaly=-0.09
+    temperature=[]
+    increase_temp=-0.09
+    excess_planetary_energy=[]
+    dOLR=B*anomaly 
+    dF_CO2=forcing_CO2(data_co2)
+    dF_N2O=forcing_n2o(data_ch4,data_n2o)
+    dF_methane=forcing_methane(data_ch4,data_n2o)
+    dF_CFC11 = forcing_CFC11(data_cfc11)
+    dF_CFC12 = forcing_CFC12(data_cfc12)
+    for i in range (0,number_years):
+        dF_tot=dF_CO2[i]+dF_N2O[i]+dF_methane[i] + dF_CFC11[i] + dF_CFC12[i]+ozone[i+1]+land_use[i+1]+snow[i+1]+aer_dir[i+1]+aer_indir[i+1]+strat_aer[i+1]+solar[i+1]+orbital[i+1]
+        excess_planetary_energy=(dF_tot-dOLR)*surface
+        dT=excess_planetary_energy/mc
+        anomaly+=dT
+        dOLR=B*anomaly
+        increase_temp+=dT
+        temperature.append(increase_temp)
+    return temperature
+
+mc_min=calc_mc_tot(25,1.6)
+mc_max=calc_mc_tot(125,1.6)
+temperature_final=temp_increase_final(mc_tot,len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir,TropAerInd,StratAer)
+temp_maxi=temp_increase_final(mc_min,len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir,TropAerInd,StratAer)
+temp_mini=temp_increase_final(mc_max,len(time),co2,n2o,ch4,CFC11,CFC12,Ozone,Solar,Land_Use,SnowAlb_BC,Orbital,TropAerDir,TropAerInd,StratAer)
+
+plt.fill_between(time,temp_maxi,temp_mini,facecolor='pink')
+plt.plot(years,temp)
+plt.xlabel('Years')
+plt.ylabel('Temperature Anomaly')
+plt.plot(time,temperature_final, color = 'red', label = 'final model')
+plt.legend()
+plt.show()
+
+print(temperature_final[len(time)-1])
+print(temp_mini[len(time)-1])
+print(temp_maxi[len(time)-1])
+
+
+
+#%%
+plt.plot(time,Solar[1:])
+
+
+
+
+
+
+
+
+
 
 
 
