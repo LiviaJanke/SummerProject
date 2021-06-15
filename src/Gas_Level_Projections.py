@@ -237,7 +237,7 @@ def target_func(real_data:list, fit_data: list, target_conc: float, target_year:
     fit_conc = fit_data[1]
     C_f = fit_conc[-1]
     dconc_dt = diff(fit_conc)/diff(fit_t)
-    t = np.linspace(2020, target_year, 12*(target_year-2020))
+    t = np.linspace(1990, target_year, 12*(target_year-1990))
     G = dconc_dt[-1]
     def func(x):
         A = x[0]
@@ -245,9 +245,9 @@ def target_func(real_data:list, fit_data: list, target_conc: float, target_year:
         C = x[2]
         D = x[3]
         return [3*A*Y**2 + 2*B*Y + C,
-                3*A*2020**2 + 2*B*2020+C-G,
+                3*A*1990**2 + 2*B*1990+C-G,
                 ((A*Y**3)+(B*Y**2)+(C*Y+D))-T,
-                (A*2020**3+B*2020**2+C*2020+D)-C_f]
+                (A*1990**3+B*1990**2+C*1990+D)-C_f]
     
     a, b, c, d = fsolve(func, [1e-6, 1e-6, 1e-6, 1e-6])
     y_t = a*t**3+b*t**2+c*t+d
@@ -255,7 +255,7 @@ def target_func(real_data:list, fit_data: list, target_conc: float, target_year:
     plt.grid()
     plt.plot(fit_t, exp(fit_t, *gas_params), 'b', linewidth = 3)
     plt.plot(t, a*t**3+b*t**2+c*t+d, 'r', linewidth = 3)
-    plt.errorbar(time, real_data, yerr = 0, fmt = 'm+', mew=2.5, ms=2.5, capsize = 2.5)
+    plt.errorbar(np.linspace(1960, 1990, 31), real_data, yerr = 0, fmt = 'm+', mew=2.5, ms=2.5, capsize = 2.5)
     plt.xlabel('Year')
     plt.ylabel('Concentration of: {}'.format(gas_name_unit))
     plt.suptitle('Concentration over time of: {}'.format(gas_name_unit), fontsize = 18, weight = 'bold', y=1)
@@ -268,15 +268,16 @@ def target_func(real_data:list, fit_data: list, target_conc: float, target_year:
     
     
 #%%
-   
 
-co2_targ = target_func(co2_conc, co2_fit_data, 450, 2070, co2_params, 'CO2 (ppm)')
-
-n2o_targ = target_func(n2o_conc, n2o_fit_data, 360, 2070, n2o_params, 'N2O (ppb)')
-
-ch4_targ = target_func(ch4_conc, ch4_fit_data, 2100, 2070, ch4_params, 'CH4 (ppb)')
 #%%
-print(np.shape(co2_targ))
+   
+co2_targ = target_func(co2_conc[:31:], co2_fit_data[:31:], 450, 2070, co2_params, 'CO2 (ppm)')
+
+n2o_targ = target_func(n2o_conc[:31:], n2o_fit_data[:31:], 360, 2070, n2o_params, 'N2O (ppb)')
+
+ch4_targ = target_func(ch4_conc[:31:], ch4_fit_data[:31:], 2000, 2070, ch4_params, 'CH4 (ppb)')
+
+
 #%%
 
 time_proj = co2_exp_proj[0]
@@ -329,8 +330,33 @@ for col, data in enumerate(array):
 workbook.close()
 
 #%%
-time, WMGHG, Ozone,	Solar, Land_Use, SnowAlb_BC, Orbital, TropAerDir, TropAerInd, StratAer = np.loadtxt('instant_forcings_1880_to_2020', skiprows = 81, delimiter = ',', unpack = 1)
+time, WMGHG, Ozone,	Solar, Land_Use, SnowAlb_BC, Orbital, TropAerDir, TropAerInd, StratAer = np.loadtxt('instant_forcings_1880_to_2020.csv', skiprows = 131, max_rows = 53, delimiter = ',', unpack = 1)
 
+land_use_params, land_use_proj_data, = lin_projection(time, Land_Use, 'Land Use Radiative Forcing (W/m\u00b2)')
 
+ozone_params, ozone_proj_data = lin_projection(time, Ozone, 'Ozone Radiative Forcing (W/m\u00b2)')
 
+snow_params, snow_proj_data = lin_projection(time, SnowAlb_BC, 'Snow Albedo Radiative Forcing (W/m\u00b2)')
 
+tropaerdir_params, tropaerdir_data = lin_projection(time, TropAerDir, 'Tropospheric Aerosols Direct Radiative Forcing (W/m\u00b2)')
+
+tropaerind_params, tropaerind_proj_data = lin_projection(time, TropAerInd, 'Tropospheric Aerosols Indirect Radiative Forcing (W/m\u00b2)')
+#%%
+workbook = xlsxwriter.Workbook('Forcing Projections.xlsx')
+worksheet = workbook.add_worksheet()
+
+array = [np.linspace(2020, 2070, 51),
+         land_use_proj_data[1],
+         ozone_proj_data[1],
+         snow_proj_data[1],
+         tropaerdir_data[1],
+         tropaerind_proj_data[1]]
+
+row = 0
+
+for col, data in enumerate(array):
+    worksheet.write_column(row, col, data)
+
+workbook.close()
+
+#%%
